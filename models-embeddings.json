@@ -1,0 +1,251 @@
+{
+  "date": "2026-10-29",
+  "input_policy": "Same body-only source chunks; no source title/product fields. Native model task wrappers differ as required. Gemma title:none means no title supplied in this arm.",
+  "models": {
+    "gemma2": {
+      "model_id": "google/embeddinggemma-2",
+      "dimension": 768,
+      "max_length": 8192,
+      "pooling": "mean",
+      "license": "Apache-2.0",
+      "query_prefix": "task: question answering | query: ",
+      "document_prefix": "title: none | text: ",
+      "config_kwargs": {
+        "vision_config": null,
+        "audio_config": null
+      },
+      "weight": "model.safetensors",
+      "revision": "f9972ac22e696a105c482202646979e33e4b5a1e",
+      "files": [
+        {
+          "rfilename": "1_Pooling/config.json",
+          "blobId": "2730fc1de168630e474c4066987f46d091de2189",
+          "size": 90
+        },
+        {
+          "rfilename": "2_Normalize/config.json",
+          "blobId": "8babba92405167e8718211dc51f44fb117e423e4",
+          "size": 97
+        },
+        {
+          "rfilename": "config.json",
+          "blobId": "dc524b2cbef566d66d8533c67dc68a6a8f5d340a",
+          "size": 4455
+        },
+        {
+          "rfilename": "config_sentence_transformers.json",
+          "blobId": "ba7dd4d5481cbaf271d5e8d1ad4271c5a45d2fd7",
+          "size": 1565
+        },
+        {
+          "rfilename": "model.safetensors",
+          "blobId": "95b4ef9f6465d3665486f6b374593a8d7d6ae003",
+          "size": 1488915288,
+          "lfs": {
+            "sha256": "197a32965d4b1105faf060417baa899e193fb73cd401f42ec9295234d5553d79",
+            "size": 1488915288,
+            "pointerSize": 135
+          }
+        },
+        {
+          "rfilename": "modules.json",
+          "blobId": "1ab20c8ab29b8338488b415e5c09af14b742fe3d",
+          "size": 413
+        },
+        {
+          "rfilename": "preprocessor_config.json",
+          "blobId": "4adff307a29874c969eda7edb5d3f07faaef879d",
+          "size": 511
+        },
+        {
+          "rfilename": "processor_config.json",
+          "blobId": "63043a5a2fd2e25a2fc5336fcdaf24e515d12289",
+          "size": 1788
+        },
+        {
+          "rfilename": "sentence_bert_config.json",
+          "blobId": "b3b98f8308641875fca1e4ddbfae5f38996bb54f",
+          "size": 747
+        },
+        {
+          "rfilename": "tokenizer.json",
+          "blobId": "8562f6c9ab4b722ecf89bf869e734560e54d3b85",
+          "size": 32170510,
+          "lfs": {
+            "sha256": "4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4",
+            "size": 32170510,
+            "pointerSize": 133
+          }
+        },
+        {
+          "rfilename": "tokenizer.model",
+          "blobId": "734e2919dcbd7fc5758b79817d3225134ffc9124",
+          "size": 4689013,
+          "lfs": {
+            "sha256": "e594c8a90eb08d8bda498ff4747977dc827ae0c3c56b5c0d41a605a22d02ef03",
+            "size": 4689013,
+            "pointerSize": 132
+          }
+        },
+        {
+          "rfilename": "tokenizer_config.json",
+          "blobId": "a9afd12fb3ca2c418fd405320ace85ad46748d03",
+          "size": 1599
+        }
+      ]
+    },
+    "bge_m3": {
+      "model_id": "BAAI/bge-m3",
+      "dimension": 1024,
+      "max_length": 8192,
+      "pooling": "cls",
+      "license": "MIT",
+      "query_prefix": "",
+      "document_prefix": "",
+      "config_kwargs": {},
+      "weight": "pytorch_model.bin",
+      "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "files": [
+        {
+          "rfilename": "1_Pooling/config.json",
+          "blobId": "9bd85925f325e25246d94c4918dc02ab98f2a1b7",
+          "size": 191
+        },
+        {
+          "rfilename": "config.json",
+          "blobId": "e6eda1c72da8f9dc30fdd9b69c73d35af3b7a7ad",
+          "size": 687
+        },
+        {
+          "rfilename": "config_sentence_transformers.json",
+          "blobId": "1fba91c78a6c8e17227058ab6d4d3acb5d8630a9",
+          "size": 123
+        },
+        {
+          "rfilename": "modules.json",
+          "blobId": "952a9b81c0bfd99800fabf352f69c7ccd46c5e43",
+          "size": 349
+        },
+        {
+          "rfilename": "pytorch_model.bin",
+          "blobId": "88e71f33b1af45aa960f3fbf6883edc6f014452a",
+          "size": 2271145830,
+          "lfs": {
+            "sha256": "b5e0ce3470abf5ef3831aa1bd5553b486803e83251590ab7ff35a117cf6aad38",
+            "size": 2271145830,
+            "pointerSize": 135
+          }
+        },
+        {
+          "rfilename": "sentence_bert_config.json",
+          "blobId": "0140ba1eac83a3c9b857d64baba91969d988624b",
+          "size": 54
+        },
+        {
+          "rfilename": "sentencepiece.bpe.model",
+          "blobId": "7a3f40a75f870bc1f21700cd414dc2acc431583c",
+          "size": 5069051,
+          "lfs": {
+            "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865",
+            "size": 5069051,
+            "pointerSize": 132
+          }
+        },
+        {
+          "rfilename": "special_tokens_map.json",
+          "blobId": "b1879d702821e753ffe4245048eee415d54a9385",
+          "size": 964
+        },
+        {
+          "rfilename": "tokenizer.json",
+          "blobId": "c8fd8778874b9aa8bdafaa3bbd760f236d237dd6",
+          "size": 17098108,
+          "lfs": {
+            "sha256": "21106b6d7dab2952c1d496fb21d5dc9db75c28ed361a05f5020bbba27810dd08",
+            "size": 17098108,
+            "pointerSize": 133
+          }
+        },
+        {
+          "rfilename": "tokenizer_config.json",
+          "blobId": "dc69ac559dcba2694012009aaa108c614541789a",
+          "size": 444
+        }
+      ]
+    },
+    "qwen3": {
+      "model_id": "Qwen/Qwen3-Embedding-0.6B",
+      "dimension": 1024,
+      "max_length": 32768,
+      "pooling": "last_token",
+      "license": "Apache-2.0",
+      "query_prefix": "Instruct: Given a technical support question, retrieve passages that provide an answer to the question.\nQuery:",
+      "document_prefix": "",
+      "config_kwargs": {},
+      "weight": "model.safetensors",
+      "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "files": [
+        {
+          "rfilename": "1_Pooling/config.json",
+          "blobId": "b6291baabbc39f9792d6759883a47d7d5bd0fbcf",
+          "size": 313
+        },
+        {
+          "rfilename": "config.json",
+          "blobId": "cef2749ee93607b8f9a58ec72f4f6bfaf874e71d",
+          "size": 727
+        },
+        {
+          "rfilename": "config_sentence_transformers.json",
+          "blobId": "76aef3ade63553ebb698fe3c2a3264040ed093f8",
+          "size": 215
+        },
+        {
+          "rfilename": "generation_config.json",
+          "blobId": "d46f1983345269c582611bbedb3ca0a13f8e5f7b",
+          "size": 117
+        },
+        {
+          "rfilename": "merges.txt",
+          "blobId": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+          "size": 1671853
+        },
+        {
+          "rfilename": "model.safetensors",
+          "blobId": "9116264a405846ebfe4e95556b63b1ca07c892a0",
+          "size": 1191586416,
+          "lfs": {
+            "sha256": "0437e45c94563b09e13cb7a64478fc406947a93cb34a7e05870fc8dcd48e23fd",
+            "size": 1191586416,
+            "pointerSize": 135
+          }
+        },
+        {
+          "rfilename": "modules.json",
+          "blobId": "952a9b81c0bfd99800fabf352f69c7ccd46c5e43",
+          "size": 349
+        },
+        {
+          "rfilename": "tokenizer.json",
+          "blobId": "18a4abbf4a408dc534006a455544dcc195f356d2",
+          "size": 11423705,
+          "lfs": {
+            "sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a",
+            "size": 11423705,
+            "pointerSize": 133
+          }
+        },
+        {
+          "rfilename": "tokenizer_config.json",
+          "blobId": "7345216a0785dc7086e8c245b2a9d3896ce2b756",
+          "size": 9706
+        },
+        {
+          "rfilename": "vocab.json",
+          "blobId": "4783fe10ac3adce15ac8f358ef5462739852c569",
+          "size": 2776833
+        }
+      ]
+    }
+  }
+}
