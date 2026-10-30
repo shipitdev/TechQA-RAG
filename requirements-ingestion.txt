@@ -1,0 +1,5 @@
+docling==2.145.0
+docling-core==2.105.0
+tokenizers==0.23.2
+beautifulsoup4==4.15.0
+lxml==6.1.3
