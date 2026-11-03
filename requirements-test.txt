@@ -1,0 +1,12 @@
+# Offline checks: no datasets, model weights, Qdrant server or paid API needed.
+pytest==9.2.0
+fastapi==0.162.0
+httpx==0.28.1
+numpy==2.5.4
+tokenizers==0.23.2
+qdrant-client==1.16.2
+python-dotenv==1.2.4
+ragas==0.4.3
+openai==2.54.0
+instructor==1.17.0
+langchain-community==0.4.1
