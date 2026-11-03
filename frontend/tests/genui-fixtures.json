@@ -1,0 +1,40 @@
+{
+  "procedure": {
+    "question": "UI test fixture: review a CQWeb configuration",
+    "status": "answered",
+    "answer": "Inspect CqServerConn.properties and the documented setting names. [S1]",
+    "sources": [
+      {
+        "id": "S1",
+        "document_id": "ui-test-fixture",
+        "chunk_id": "ui-test-fixture:1",
+        "title": "UI design fixture \u2014 configuration review",
+        "text": "Illustrative UI test, not a retrieved production answer. The file is CqServerConn.properties. The documented field names in this fixture are TEAM_SERVER_URL and TEAM_SERVER_SOAP_PORT. Review the file, compare the settings with the source, then review the connection. The cat command displays the file without changing it."
+      }
+    ],
+    "openui": "root = Stack([finding, settings, steps, warning], \"column\", \"l\")\nfinding = AnswerCard(\"Review the CQWeb connection\", \"Inspect the documented configuration before making a change. This preview demonstrates a structured answer, not a live diagnosis.\", [\"S1\"])\nsettings = Configuration(\"Configuration at a glance\", [{key:\"Configuration file\", value:\"CqServerConn.properties\", sourceIds:[\"S1\"]}, {key:\"Server URL field\",value:\"TEAM_SERVER_URL\",sourceIds:[\"S1\"]}, {key:\"SOAP port field\",value:\"TEAM_SERVER_SOAP_PORT\",sourceIds:[\"S1\"]}])\nsteps = Procedure(\"Review checklist\", [{title:\"Read the configuration\",detail:\"Inspect the file before editing it.\",code:\"cat CqServerConn.properties\",language:\"shell \u00b7 read only\",sourceIds:[\"S1\"]},{title:\"Compare the setting names\",detail:\"Find TEAM_SERVER_URL and TEAM_SERVER_SOAP_PORT and compare them with the documented source.\",sourceIds:[\"S1\"]},{title:\"Review the connection guidance\",detail:\"Use the attached source to review the next action for your environment.\",sourceIds:[\"S1\"]}])\nwarning = Notice(\"Review before you change\", \"These are review controls. Checking a step does not run a command or change your server.\", \"note\", [\"S1\"])",
+    "request_id": "ui-design-fixture",
+    "metrics": {
+      "fixture": true
+    }
+  },
+  "tabs": {
+    "question": "UI test fixture: explore configuration evidence",
+    "status": "answered",
+    "answer": "Review the named fields and source. [S1]",
+    "sources": [
+      {
+        "id": "S1",
+        "document_id": "ui-test-fixture",
+        "chunk_id": "ui-test-fixture:1",
+        "title": "UI design fixture \u2014 configuration review",
+        "text": "Illustrative UI test, not a retrieved production answer. The file is CqServerConn.properties. The documented field names in this fixture are TEAM_SERVER_URL and TEAM_SERVER_SOAP_PORT. Review the file, compare the settings with the source, then review the connection. The cat command displays the file without changing it."
+      }
+    ],
+    "openui": "root = Stack([finding, views])\nfinding = AnswerCard(\"Explore the documented fields\", \"Switch views to inspect the setting names or read the source excerpt. This is a UI test fixture.\", [\"S1\"])\nviews = Tabs([{label:\"Setting names\",children:[fields]},{label:\"Source excerpt\",children:[excerpt]}])\nfields = DataTable(\"Named configuration fields\", [\"Purpose\",\"Setting\"], [[\"Server URL\",\"TEAM_SERVER_URL\"],[\"SOAP port\",\"TEAM_SERVER_SOAP_PORT\"]])\nexcerpt = EvidenceExcerpt(\"S1\")",
+    "request_id": "ui-tabs-fixture",
+    "metrics": {
+      "fixture": true
+    }
+  }
+}
