@@ -1,0 +1,14 @@
+# Separate evaluation environment; does not change the serving environment.
+ragas==0.4.3
+openai==2.54.0
+instructor==1.17.0
+langchain-community==0.4.1
+python-dotenv==1.2.4
+sentence-transformers==6.2.0
+torch==2.15.0
+torchvision==0.29.2
+transformers==5.22.1
+tokenizers==0.23.2
+numpy==2.5.4
+qdrant-client==1.16.2
+pytest==9.2.0
