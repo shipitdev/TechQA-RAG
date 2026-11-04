@@ -1,0 +1,57 @@
+{
+  "scope": "synthetic demonstration, not TechQA quality evidence",
+  "cases": [
+    {
+      "question_id": "DEMO_ANSWER",
+      "user_input": "Which file stores the Beacon URL, and what follows an edit?",
+      "reference": "Edit beacon.ini, then restart the Beacon connector.",
+      "reference_provenance": {
+        "document_id": "beacon",
+        "view": "synthetic_v1",
+        "start": 0,
+        "end": 51
+      },
+      "status": "answered",
+      "response": "Edit beacon.ini, then restart the connector. [S1]",
+      "citations": [
+        "S1"
+      ],
+      "sources": [
+        {
+          "id": "S1",
+          "document_id": "beacon",
+          "text": "Edit beacon.ini, then restart the Beacon connector."
+        }
+      ],
+      "generation": {
+        "seconds": 0,
+        "provider_calls": []
+      }
+    },
+    {
+      "question_id": "DEMO_WITHHELD",
+      "user_input": "How do I enable a setting missing from the supplied manual?",
+      "reference": "Use the documented setting.",
+      "reference_provenance": {
+        "document_id": "settings",
+        "view": "synthetic_v1",
+        "start": 0,
+        "end": 27
+      },
+      "status": "insufficient_evidence",
+      "response": "The available sources do not support a complete answer.",
+      "citations": [],
+      "sources": [
+        {
+          "id": "S1",
+          "document_id": "unrelated",
+          "text": "A different product has a different setting."
+        }
+      ],
+      "generation": {
+        "seconds": 0,
+        "provider_calls": []
+      }
+    }
+  ]
+}

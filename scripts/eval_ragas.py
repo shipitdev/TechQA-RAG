@@ -18,7 +18,26 @@ FIELDS = {
     'context_recall': ('user_input', 'reference', 'retrieved_contexts'),
     'faithfulness': ('user_input', 'response', 'retrieved_contexts'),
     'answer_relevancy': ('user_input', 'response'),
+    'factual_correctness': ('response', 'reference'),
+    'answer_completeness': ('response', 'reference'),
 }
+
+
+class BudgetExceeded(RuntimeError):
+    pass
+
+
+class RequestBudget:
+    def __init__(self, limit):
+        if limit < 0:
+            raise ValueError('Request budget must be nonnegative')
+        self.limit, self.sent, self.exhausted = limit, 0, False
+
+    def consume(self):
+        if self.sent >= self.limit:
+            self.exhausted = True
+            raise BudgetExceeded('Evaluation HTTP request budget exhausted')
+        self.sent += 1
 
 
 def fingerprint(value):
@@ -93,12 +112,13 @@ async def cached_judgment(generate, settings, prompt, response_model, directory,
             'seconds': time.perf_counter() - started, 'http_calls': http_calls[offset:]})
 
 
-async def evaluate_case(case, scorers, *, timeout=300, journal=None):
+async def evaluate_case(case, scorers, *, timeout=300, journal=None, budget=None):
     results = {}
     for name, scorer in scorers.items():
         started = time.perf_counter()
         offset = len(journal) if journal is not None else 0
-        if not case['retrieved_contexts'] or (name in ('faithfulness', 'answer_relevancy') and case['status'] != 'answered'):
+        if (('retrieved_contexts' in FIELDS[name] and not case['retrieved_contexts']) or
+                ('response' in FIELDS[name] and case['status'] != 'answered')):
             results[name] = {'state': 'skipped', 'score': None, 'reason': 'no_context_or_no_released_answer'}
             continue
         try:
@@ -109,7 +129,8 @@ async def evaluate_case(case, scorers, *, timeout=300, journal=None):
                              'score': value if math.isfinite(value) else None}
         except Exception as exc:
             # Provider messages can contain inputs/headers; retain a safe category only.
-            results[name] = {'state': 'error', 'score': None, 'error_type': type(exc).__name__}
+            results[name] = {'state': 'budget_exhausted' if budget and budget.exhausted else 'error',
+                             'score': None, 'error_type': type(exc).__name__}
         results[name]['seconds'] = round(time.perf_counter() - started, 3)
         if journal is not None:
             results[name]['judge_calls'] = journal[offset:]
@@ -123,7 +144,7 @@ def summarize(rows):
         values = [r['metrics'][name] for r in rows if name in r['metrics']]
         counts = Counter(v['state'] for v in values)
         scores = [v['score'] for v in values if v['state'] == 'success']
-        summary['metrics'][name] = {state: counts[state] for state in ('success', 'error', 'undefined', 'skipped')}
+        summary['metrics'][name] = {state: counts[state] for state in ('success', 'error', 'undefined', 'skipped', 'budget_exhausted')}
         summary['metrics'][name]['mean'] = sum(scores) / len(scores) if scores else None
     return summary
 
@@ -189,23 +210,28 @@ async def run(args):
     from ragas.llms import llm_factory
     from ragas.llms.base import InstructorBaseRagasLLM
     from ragas.embeddings.base import BaseRagasEmbedding
-    from ragas.metrics.collections import ContextPrecision, ContextRecall, Faithfulness, AnswerRelevancy
+    from ragas.metrics.collections import ContextPrecision, ContextRecall, Faithfulness, AnswerRelevancy, FactualCorrectness
     from rag_app.retriever import Retriever
 
     manifest = json.loads((args.cases / 'manifest.json').read_text())
-    cases = [json.loads((args.cases / (qid + '.json')).read_text()) for qid in manifest['question_ids']]
-    if any(c['question_id'] != qid or not qid.startswith('TRAIN_') for c, qid in zip(cases, manifest['question_ids'])):
+    ids = manifest['question_ids'][:args.limit]
+    if len(set(ids)) != len(ids) or any(not qid.startswith('TRAIN_') or not qid.replace('_', '').isalnum() for qid in ids):
+        raise ValueError('Invalid training case IDs')
+    cases = [json.loads((args.cases / (qid + '.json')).read_text()) for qid in ids]
+    if not cases or any(c['question_id'] != qid for c, qid in zip(cases, ids)):
         raise ValueError('Case membership mismatch')
     key = os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')
-    if not key:
+    if not key and args.max_requests:
         raise ValueError('Groq key missing')
-    retriever = Retriever()
+    retriever = Retriever() if 'answer_relevancy' in args.metrics else None
+    budget = RequestBudget(args.max_requests)
     settings = {'provider': 'groq', 'judge': args.judge, 'temperature': 0, 'reasoning_effort': 'low',
                 'transport': {'sdk_max_retries': 3, 'retry_after_buffer_seconds': 2, 'minimum_retry_seconds': 5},
                 'max_tokens': 4096, 'strictness': 3, 'timeout_per_metric': args.timeout,
                 'packages': {p: importlib.metadata.version(p) for p in
-                    ('ragas', 'openai', 'instructor', 'langchain-community', 'sentence-transformers', 'torch', 'transformers', 'torchvision')},
-                'implementation_sha256': sha256(Path(__file__)), 'embedding': retriever._gemma_policy(),
+                    (('ragas', 'openai', 'instructor', 'langchain-community') +
+                     (('sentence-transformers', 'torch', 'transformers', 'torchvision') if retriever else ()))},
+                'implementation_sha256': sha256(Path(__file__)), 'embedding': retriever._gemma_policy() if retriever else None,
                 'embedding_policy': 'same formatted Gemma query role for original/generated questions; normalized cosine',
                 'ragas_source_sha256': fingerprint([(str(p.relative_to(Path(__import__('ragas').__file__).parent)), sha256(p))
                     for p in sorted(Path(__import__('ragas').__file__).parent.rglob('*.py'))])}
@@ -213,6 +239,7 @@ async def run(args):
     args.cache.mkdir(parents=True, exist_ok=True)
 
     async def request_hook(request):
+        budget.consume()  # Includes SDK retries; blocks before any request is sent.
         request.extensions['eval_started'] = time.perf_counter()
         request.extensions['eval_call_index'] = len(http_calls)
         http_calls.append({'status': None, 'usage': {}, 'seconds': None})
@@ -232,22 +259,23 @@ async def run(args):
             response.headers['retry-after'] = str(delay)
             print(f'  Groq quota: waiting about {delay:g}s before retry', flush=True)
 
-    client = AsyncOpenAI(api_key=key, base_url='https://api.groq.com/openai/v1', timeout=60, max_retries=3,
+    client = AsyncOpenAI(api_key=key or 'cache-only-no-key', base_url='https://api.groq.com/openai/v1', timeout=60, max_retries=3,
         http_client=httpx.AsyncClient(event_hooks={'request': [request_hook], 'response': [response_hook]}))
     backend = llm_factory(args.judge, client=client, temperature=0, max_tokens=4096, reasoning_effort='low')
 
     class CachedJudge(InstructorBaseRagasLLM):
-        def __init__(self):
+        def __init__(self, draws_per_prompt=1):
             self.draws = Counter()
+            self.draws_per_prompt = draws_per_prompt
 
         def generate(self, prompt, response_model):
             return asyncio.run(self.agenerate(prompt, response_model))
 
         async def agenerate(self, prompt, response_model):
             identity = fingerprint([prompt, response_model.model_json_schema()])
-            draw = self.draws[identity]
+            draw = self.draws[identity] % self.draws_per_prompt
             self.draws[identity] += 1
-            # Relevancy asks three identical prompts; cache each draw independently.
+            # Reuse identical grading work; only relevancy needs three separate draws.
             return await cached_judgment(backend.agenerate, settings, prompt, response_model,
                                          args.cache, journal, http_calls, draw=draw)
 
@@ -261,27 +289,34 @@ async def run(args):
             return self.embed_text(text)
 
     judge = CachedJudge()
-    scorers = {'context_precision': ContextPrecision(llm=judge), 'context_recall': ContextRecall(llm=judge),
-               'faithfulness': Faithfulness(llm=judge),
-               'answer_relevancy': AnswerRelevancy(llm=judge, embeddings=LocalGemma(), strictness=3)}
+    factories = {'context_precision': lambda: ContextPrecision(llm=judge),
+                 'context_recall': lambda: ContextRecall(llm=judge),
+                 'faithfulness': lambda: Faithfulness(llm=judge),
+                 'answer_relevancy': lambda: AnswerRelevancy(llm=CachedJudge(3), embeddings=LocalGemma(), strictness=3),
+                 'factual_correctness': lambda: FactualCorrectness(llm=judge, mode='f1'),
+                 'answer_completeness': lambda: FactualCorrectness(llm=judge, mode='recall')}
+    scorers = {name: factories[name]() for name in dict.fromkeys(args.metrics)}
     rows = []
     report = {'created_at': datetime.now(timezone.utc).isoformat(), 'settings': settings,
-              'manifest': manifest, 'cases_sha256': {c['question_id']: sha256(args.cases / (c['question_id'] + '.json')) for c in cases},
+              'manifest': manifest, 'selected_question_ids': ids, 'selected_metrics': list(scorers),
+              'cases_sha256': {c['question_id']: sha256(args.cases / (c['question_id'] + '.json')) for c in cases},
               'limitations': ['training tuning pilot, not final development', 'same model family writer/judge; manual review needed',
                               'answer metrics conditional on released answers; no global refusal accuracy', 'cost not calculated; actual token usage recorded']}
     started = time.perf_counter()
     try:
         for case in cases:
             print(case['question_id'] + ': RAGAS scoring', flush=True)
-            rows.append(await evaluate_case(case, scorers, timeout=args.timeout, journal=journal))
+            rows.append(await evaluate_case(case, scorers, timeout=args.timeout, journal=journal, budget=budget))
             report.update({'results': rows, 'summary': summarize(rows), 'evaluation_seconds': time.perf_counter() - started,
                            'judge_cache_hits': sum(x['cache_hit'] for x in journal),
                            'judge_cache_misses': sum(not x['cache_hit'] for x in journal),
-                           'http_calls': http_calls, 'embedding_cache': embedding_counts})
+                           'http_calls': http_calls, 'embedding_cache': embedding_counts,
+                           'request_budget': {'limit': budget.limit, 'sent': budget.sent, 'exhausted': budget.exhausted}})
             save(args.output, report)
     finally:
         await client.close()
-        retriever.close()
+        if retriever:
+            retriever.close()
     print(json.dumps(report['summary'], indent=2), flush=True)
 
 
@@ -295,7 +330,10 @@ def main():
     c.add_argument('--output', type=Path, default=ROOT / 'data/ragas/pilot_v1')
     r = subs.add_parser('run')
     r.add_argument('--cases', type=Path, default=ROOT / 'data/ragas/pilot_v1')
-    r.add_argument('--output', type=Path, default=ROOT / 'data/ragas/results/pilot_v1.json')
+    r.add_argument('--output', type=Path)
+    r.add_argument('--metrics', nargs='+', choices=tuple(FIELDS), required=True)
+    r.add_argument('--limit', type=int, default=3)
+    r.add_argument('--max-requests', type=int, default=12, help='Maximum HTTP attempts including retries; 0 is cache-only')
     r.add_argument('--cache', type=Path, default=ROOT / 'data/ragas/judge_cache')
     r.add_argument('--judge', default='openai/gpt-oss-120b')
     r.add_argument('--timeout', type=float, default=300)
@@ -303,8 +341,10 @@ def main():
     if args.command == 'collect':
         collect(args)
     else:
-        if args.timeout <= 0:
-            parser.error('timeout must be positive')
+        if args.timeout <= 0 or args.limit < 1 or args.max_requests < 0:
+            parser.error('timeout/limit must be positive; max-requests must be nonnegative')
+        if args.output is None:
+            args.output = ROOT / 'data/ragas/results' / ('run_' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')
         asyncio.run(run(args))
 
 

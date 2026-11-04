@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from scripts.eval_ragas import select_questions, make_case, metric_inputs, evaluate_case, summarize, cached_judgment, retry_delay
+from scripts.eval_ragas import select_questions, make_case, metric_inputs, evaluate_case, summarize, cached_judgment, retry_delay, RequestBudget, BudgetExceeded
 
 
 def question(qid='TRAIN_Q1', answerable='Y'):
@@ -48,6 +48,15 @@ def test_retry_after_has_buffer_for_fractional_token_refill():
     assert retry_delay({}) == 60
     assert retry_delay({'retry-after': 'invalid'}) == 60
     assert retry_delay({'retry-after': 'nan'}) == 60
+
+
+def test_request_budget_counts_retries_and_cache_only_blocks_before_sending():
+    budget = RequestBudget(2)
+    budget.consume(); budget.consume()
+    with pytest.raises(BudgetExceeded): budget.consume()
+    assert budget.sent == 2 and budget.exhausted
+    with pytest.raises(BudgetExceeded): RequestBudget(0).consume()
+    with pytest.raises(ValueError): RequestBudget(-1)
 
 
 def test_withheld_answers_keep_retrieval_scores_but_skip_answer_scores():
@@ -108,7 +117,7 @@ def test_real_ragas_aggregations_with_controlled_marking_not_network_calls(monke
     pytest.importorskip('ragas')
     from ragas.llms.base import InstructorBaseRagasLLM
     from ragas.embeddings.base import BaseRagasEmbedding
-    from ragas.metrics.collections import ContextPrecision, ContextRecall, Faithfulness, AnswerRelevancy
+    from ragas.metrics.collections import ContextPrecision, ContextRecall, Faithfulness, AnswerRelevancy, FactualCorrectness
 
     class Judge(InstructorBaseRagasLLM):
         def generate(self, prompt, response_model):
@@ -120,6 +129,7 @@ def test_real_ragas_aggregations_with_controlled_marking_not_network_calls(monke
                     {'statement': 'One', 'reason': 'Supported', 'attributed': 1},
                     {'statement': 'Two', 'reason': 'Missing', 'attributed': 0}]},
                 'StatementGeneratorOutput': {'statements': ['One', 'Two']},
+                'ClaimDecompositionOutput': {'claims': ['One', 'Two']},
                 'NLIStatementOutput': {'statements': [
                     {'statement': 'One', 'reason': 'Supported', 'verdict': 1},
                     {'statement': 'Two', 'reason': 'Missing', 'verdict': 0}]},
@@ -135,8 +145,12 @@ def test_real_ragas_aggregations_with_controlled_marking_not_network_calls(monke
     results = asyncio.run(evaluate_case(case(), {
         'context_precision': ContextPrecision(llm=judge), 'context_recall': ContextRecall(llm=judge),
         'faithfulness': Faithfulness(llm=judge),
-        'answer_relevancy': AnswerRelevancy(llm=judge, embeddings=Embeddings())}))['metrics']
+        'answer_relevancy': AnswerRelevancy(llm=judge, embeddings=Embeddings()),
+        'factual_correctness': FactualCorrectness(llm=judge, mode='f1'),
+        'answer_completeness': FactualCorrectness(llm=judge, mode='recall')}))['metrics']
     assert results['context_precision']['score'] == pytest.approx(1)
     assert results['context_recall']['score'] == pytest.approx(.5)
     assert results['faithfulness']['score'] == pytest.approx(.5)
     assert results['answer_relevancy']['score'] == pytest.approx(1)
+    assert results['factual_correctness']['score'] == pytest.approx(.5)
+    assert results['answer_completeness']['score'] == pytest.approx(.5)

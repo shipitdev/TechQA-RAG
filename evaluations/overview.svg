@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1280" viewBox="0 0 1120 1280" role="img" aria-labelledby="title desc">
+<title id="title">TechQA RAG evaluation suite: components, pipeline, application, regression and planned monitoring</title>
+<desc id="desc">Implemented Python contract checks and RAGAS pipeline evaluation, optional factual correctness and completeness judges, paired regression reports, and planned sampled online monitoring. A three-case pilot is integration evidence, not a final benchmark.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#94a3b8" stroke-width="1.5"/></marker></defs>
+<rect width="1120" height="1280" rx="18" fill="#f8fafc"/>
+<g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif" fill="#172b3a">
+<text x="36" y="40" font-size="13" font-weight="700" fill="#476479">TECHQA RAG / EVALUATION SUITE</text>
+<text x="36" y="83" font-size="36" font-weight="700" fill="#102d3b">Measure each handoff.</text>
+<text x="36" y="116" font-size="18" font-weight="400" fill="#334e60">RAGAS for semantic judgments. Python for contracts, operations and comparisons.</text>
+<rect x="36" y="133" width="80" height="26" rx="14" fill="#d6eee5" stroke="#d6eee5"/>
+<text x="48" y="151" font-size="12" font-weight="700" fill="#185646">SHIPPED</text>
+<rect x="160" y="133" width="216" height="26" rx="14" fill="#faedc9" stroke="#faedc9"/>
+<text x="172" y="151" font-size="12" font-weight="700" fill="#785514">OPT-IN / NOT BENCHMARKED</text>
+<rect x="420" y="133" width="80" height="26" rx="14" fill="#e8edf2" stroke="#e8edf2"/>
+<text x="432" y="151" font-size="12" font-weight="700" fill="#526476">PLANNED</text>
+<rect x="36" y="181" width="1048" height="189" rx="14" fill="#e7f4ee" stroke="#b7d8c9"/>
+<text x="58" y="214" font-size="22" font-weight="700" fill="#334e60">01  Components — test one part at a time</text>
+<rect x="58" y="233" width="490" height="113" rx="14" fill="#f8fcfa" stroke="#c3ddd1"/>
+<text x="78" y="263" font-size="20" font-weight="700" fill="#334e60">Retriever</text>
+<text x="78" y="292" font-size="18" font-weight="400" fill="#334e60">Recall@K · MRR · nDCG</text>
+<text x="78" y="320" font-size="17" font-weight="400" fill="#334e60">Labeled rankings · programmatic checks</text>
+<rect x="570" y="233" width="492" height="113" rx="14" fill="#f8fcfa" stroke="#c3ddd1"/>
+<text x="590" y="263" font-size="20" font-weight="700" fill="#334e60">Generator with supplied evidence</text>
+<text x="590" y="292" font-size="18" font-weight="400" fill="#334e60">Writer / verifier / repair fixtures</text>
+<text x="590" y="320" font-size="17" font-weight="400" fill="#334e60">Controlled contracts; quality benchmark pending</text>
+<path d="M560 373 V396" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="36" y="406" width="1048" height="155" rx="14" fill="#efedfc" stroke="#cdc8ef"/>
+<text x="58" y="440" font-size="22" font-weight="700" fill="#334e60">02  Pipeline — evaluate the real retrieved context</text>
+<rect x="925" y="420" width="80" height="26" rx="14" fill="#d6eee5" stroke="#d6eee5"/>
+<text x="937" y="438" font-size="12" font-weight="700" fill="#185646">SHIPPED</text>
+<text x="58" y="477" font-size="19" font-weight="600" fill="#334e60">Context precision  →  context recall  →  faithfulness  →  answer relevancy</text>
+<text x="58" y="509" font-size="17" font-weight="400" fill="#334e60">Saved evidence + released answer + reference; withheld cases and errors stay visible.</text>
+<text x="58" y="537" font-size="17" font-weight="500" fill="#514a83">Selected metrics · case limits · request caps · cached marking decisions</text>
+<path d="M560 565 V589" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="36" y="598" width="1048" height="212" rx="14" fill="#eaf2fb" stroke="#c0d3e9"/>
+<text x="58" y="632" font-size="22" font-weight="700" fill="#334e60">03  Application — answer quality, contracts and operating cost</text>
+<rect x="58" y="650" width="322" height="137" rx="14" fill="#f8fbff" stroke="#cfdeec"/>
+<rect x="399" y="650" width="322" height="137" rx="14" fill="#f8fbff" stroke="#cfdeec"/>
+<rect x="740" y="650" width="322" height="137" rx="14" fill="#f8fbff" stroke="#cfdeec"/>
+<text x="76" y="680" font-size="20" font-weight="700" fill="#334e60">Quality</text>
+<rect x="177" y="661" width="72" height="26" rx="14" fill="#faedc9" stroke="#faedc9"/>
+<text x="189" y="679" font-size="12" font-weight="700" fill="#785514">OPT-IN</text>
+<text x="76" y="711" font-size="17" font-weight="400" fill="#334e60">Factual correctness (F1)</text>
+<text x="76" y="737" font-size="17" font-weight="400" fill="#334e60">Completeness (recall mode)</text>
+<text x="76" y="764" font-size="16" font-weight="400" fill="#637789">Style / broad safety: planned</text>
+<text x="417" y="680" font-size="20" font-weight="700" fill="#334e60">Contracts</text>
+<text x="417" y="711" font-size="17" font-weight="400" fill="#334e60">Citations · withholding · layouts</text>
+<text x="417" y="737" font-size="17" font-weight="400" fill="#334e60">Judge version-preservation flags</text>
+<text x="417" y="764" font-size="16" font-weight="400" fill="#334e60">Human review for flagged scores</text>
+<text x="758" y="680" font-size="20" font-weight="700" fill="#334e60">Operations</text>
+<text x="758" y="711" font-size="17" font-weight="400" fill="#334e60">Time · tokens · cache use</text>
+<text x="758" y="737" font-size="17" font-weight="400" fill="#334e60">HTTP attempts and quota errors</text>
+<text x="758" y="764" font-size="16" font-weight="400" fill="#637789">Dollar pricing not configured</text>
+<path d="M560 814 V837" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="36" y="847" width="1048" height="105" rx="14" fill="#fbf4e5" stroke="#e2d3b1"/>
+<text x="58" y="880" font-size="22" font-weight="700" fill="#334e60">Regression is a comparison, not another metric</text>
+<text x="58" y="913" font-size="18" font-weight="400" fill="#334e60">Same cases + same references → paired outcome and score changes → inspect regressions.</text>
+<path d="M560 956 V979" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="36" y="989" width="1048" height="119" rx="14" fill="#f1f4f7" stroke="#aebdcc" stroke-dasharray="7 5"/>
+<text x="58" y="1023" font-size="22" font-weight="700" fill="#334e60">04  Online — sampled production monitoring</text>
+<rect x="929" y="1001" width="80" height="26" rx="14" fill="#e8edf2" stroke="#e8edf2"/>
+<text x="941" y="1019" font-size="12" font-weight="700" fill="#526476">PLANNED</text>
+<text x="58" y="1055" font-size="18" font-weight="400" fill="#334e60">Random samples + flagged requests · calibrated judges · feedback · drift monitoring</text>
+<text x="58" y="1082" font-size="17" font-weight="400" fill="#334e60">Operational logs exist today; Langfuse, online scoring and automated feedback do not.</text>
+<path d="M560 1112 V1135" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="36" y="1145" width="1048" height="84" rx="14" fill="#e7f4ee" stroke="#b7d8c9"/>
+<text x="58" y="1177" font-size="21" font-weight="700" fill="#334e60">Review failures → curate training cases → rerun the fixed suite</text>
+<text x="58" y="1206" font-size="17" font-weight="400" fill="#334e60">Manual review is active. Automatic case promotion and self-improvement are planned.</text>
+<text x="36" y="1260" font-size="16" font-weight="400" fill="#637789">Evidence so far: 3-case tuning pilot. Final held-out quality and production readiness are not established.</text>
+</g></svg>

@@ -1,0 +1,331 @@
+{
+  "schema": "saved_case_checks_v1",
+  "cohort_id": "d5ca7576b283e2a2c1c12983f77e19c0aae28f02bec832fdc8dbd7f2526758e7",
+  "case_count": 3,
+  "outcomes": {
+    "insufficient_evidence": 2,
+    "answered": 1
+  },
+  "metrics": {
+    "answer_coverage": 0.3333333333333333,
+    "selected_gold_document_hit_rate": 0.6666666666666666,
+    "citation_contract_pass_rate": 1.0
+  },
+  "denominators": {
+    "selected_gold_document_hit_rate": 3,
+    "citation_contract_pass_rate": 1
+  },
+  "operations": {
+    "generation_seconds": [
+      68.74449349999486,
+      121.2497846250044,
+      66.348813083001
+    ],
+    "generation_reported_tokens": 40295,
+    "generation_usage_cases": 3,
+    "cost_usd": null,
+    "evaluation": {
+      "seconds": 48.90108508300182,
+      "judge_cache_hits": 25,
+      "judge_cache_misses": 8,
+      "http_attempts": 10,
+      "reported_tokens": 17135,
+      "scope": "this recorded scoring pass only; earlier cache-populating passes cost extra"
+    }
+  },
+  "cases": [
+    {
+      "question_id": "TRAIN_Q007",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 5,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_precision": {
+          "state": "success",
+          "score": 0.7555555555303703,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q008",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_precision": {
+          "state": "success",
+          "score": 0.8874999999778125,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q013",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_precision": {
+          "state": "success",
+          "score": 0.7916666666402777,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": true
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 0.5,
+          "needs_review": true
+        },
+        "answer_relevancy": {
+          "state": "success",
+          "score": 0.9793743376624086,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [
+        {
+          "metric": "context_recall",
+          "label": "TIP",
+          "introduced_version": "1",
+          "allowed_versions": [
+            "2.1",
+            "2.2",
+            "2.2.0.1"
+          ],
+          "needs_review": true
+        },
+        {
+          "metric": "faithfulness",
+          "label": "TIP",
+          "introduced_version": "1",
+          "allowed_versions": [
+            "2.1",
+            "2.2",
+            "2.2.0.1"
+          ],
+          "needs_review": true
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Selected-document hit is not search Recall@K or semantic evidence recall.",
+    "Citation validity does not establish claim support.",
+    "Version flags are heuristics for review; raw scores are never adjusted.",
+    "No style, toxicity/PII, live feedback or drift scores are computed."
+  ],
+  "ragas_summary": {
+    "attempted": 3,
+    "outcomes": {
+      "insufficient_evidence": 2,
+      "answered": 1
+    },
+    "metrics": {
+      "context_precision": {
+        "success": 3,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 0,
+        "mean": 0.8115740740494868,
+        "flagged_for_review": 0
+      },
+      "context_recall": {
+        "success": 3,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 0,
+        "mean": 0.6666666666666666,
+        "flagged_for_review": 1
+      },
+      "faithfulness": {
+        "success": 1,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 2,
+        "budget_exhausted": 0,
+        "mean": 0.5,
+        "flagged_for_review": 1
+      },
+      "answer_relevancy": {
+        "success": 1,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 2,
+        "budget_exhausted": 0,
+        "mean": 0.9793743376624086,
+        "flagged_for_review": 0
+      }
+    }
+  },
+  "judge": {
+    "provider": "groq",
+    "judge": "openai/gpt-oss-120b",
+    "temperature": 0,
+    "strictness": 3,
+    "max_tokens": 4096,
+    "embedding": {
+      "model": "google/embeddinggemma-2",
+      "revision": "f9972ac22e696a105c482202646979e33e4b5a1e",
+      "assets": [
+        [
+          "1_Pooling/config.json",
+          "2730fc1de168630e474c4066987f46d091de2189"
+        ],
+        [
+          "2_Normalize/config.json",
+          "8babba92405167e8718211dc51f44fb117e423e4"
+        ],
+        [
+          "config.json",
+          "dc524b2cbef566d66d8533c67dc68a6a8f5d340a"
+        ],
+        [
+          "config_sentence_transformers.json",
+          "ba7dd4d5481cbaf271d5e8d1ad4271c5a45d2fd7"
+        ],
+        [
+          "model.safetensors",
+          "197a32965d4b1105faf060417baa899e193fb73cd401f42ec9295234d5553d79"
+        ],
+        [
+          "modules.json",
+          "1ab20c8ab29b8338488b415e5c09af14b742fe3d"
+        ],
+        [
+          "preprocessor_config.json",
+          "4adff307a29874c969eda7edb5d3f07faaef879d"
+        ],
+        [
+          "processor_config.json",
+          "63043a5a2fd2e25a2fc5336fcdaf24e515d12289"
+        ],
+        [
+          "sentence_bert_config.json",
+          "b3b98f8308641875fca1e4ddbfae5f38996bb54f"
+        ],
+        [
+          "tokenizer.json",
+          "4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4"
+        ],
+        [
+          "tokenizer.model",
+          "e594c8a90eb08d8bda498ff4747977dc827ae0c3c56b5c0d41a605a22d02ef03"
+        ],
+        [
+          "tokenizer_config.json",
+          "a9afd12fb3ca2c418fd405320ace85ad46748d03"
+        ]
+      ],
+      "device": "cpu",
+      "dtype": "float32",
+      "attention": "eager",
+      "query_prefix": "task: question answering | query: ",
+      "software": {
+        "torch": "2.15.0",
+        "transformers": "5.22.1",
+        "sentence-transformers": "6.2.0"
+      }
+    },
+    "embedding_policy": "same formatted Gemma query role for original/generated questions; normalized cosine",
+    "ragas_source_sha256": "3e1a68a9cbef46834c672b716266089b1764d5d7bd424f997e92c8d92083e160",
+    "implementation_sha256": "42ad58ae92c93bea40d69ed39c1524353646c87016b8438c1440030166b7d769",
+    "packages": {
+      "ragas": "0.4.3",
+      "openai": "2.54.0",
+      "instructor": "1.17.0",
+      "langchain-community": "0.4.1",
+      "sentence-transformers": "6.2.0",
+      "torch": "2.15.0",
+      "transformers": "5.22.1",
+      "torchvision": "0.29.2"
+    }
+  },
+  "judge_comparison_id": "bb152ffb496a60bcb2a9dfb65358b12dbaf8795fb8ea4e02c2af10b3456bd34d",
+  "provenance": {
+    "dataset": "IBM TechQA",
+    "split": "training tuning; first three sorted answerable IDs",
+    "run_date": "2026-11-03",
+    "purpose": "integration pilot, not final benchmark",
+    "source_run_sha256": "ba1613d7bcf47e85d13be3b40b79945a55cd7157550a1297f37dda57eef8c9e4",
+    "collection_manifest_sha256": "4bc1e40c648b98fa5e3980e41103aaa472fad296396cbffb1797c368b4f66b5b",
+    "private_artifacts": "Original questions, source passages, answers, references and full judge traces are not distributed.",
+    "export_date": "2026-11-04",
+    "new_live_judge_calls_for_export": 0
+  },
+  "cache_replay": {
+    "same_scores": true,
+    "judge_cache_hits": 33,
+    "judge_cache_misses": 0,
+    "http_attempts": 0,
+    "scoring_loop_seconds": 0.022332082997309044,
+    "scope": "historical replay; excludes process startup and imports"
+  },
+  "review_notes": {
+    "TRAIN_Q007": "Known answer article absent from selected sources; semantic reference recall zero.",
+    "TRAIN_Q008": "Selected evidence supports reference but pipeline withheld; investigate release path.",
+    "TRAIN_Q013": "Judge changed TIP 2.1 to TIP 1 while extracting claims. Raw faithfulness is flagged, not adjusted."
+  },
+  "available_not_benchmarked": [
+    "factual_correctness",
+    "answer_completeness"
+  ],
+  "planned": [
+    "style rubric",
+    "broad toxicity/PII/jailbreak evaluation",
+    "sampled online judging",
+    "feedback/drift monitoring",
+    "automated promotion into golden sets"
+  ]
+}
