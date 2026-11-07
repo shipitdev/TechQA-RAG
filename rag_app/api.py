@@ -166,6 +166,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                 provider = runtime.get('provider')
                 if provider:
                     provider.usage.clear()
+                    provider.attempts.clear()
                     provider.deadline = started + 180
                 context = sessions.context(session.id)
                 question = body.question
@@ -191,7 +192,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                             'pipeline': pipeline_version(),
                             'index': retrieve.index_identity() if hasattr(retrieve, 'index_identity') else 'injected_test_index',
                             'model': MODEL,
-                            'prompt': 'strict_v1', 'generation': {'provider': 'groq', 'reasoning_effort': 'low', 'max_output_tokens': 1500}}
+                            'prompt': 'strict_v2', 'generation': {'provider': 'groq', 'reasoning_effort': 'low', 'max_output_tokens': 1500}}
                 cached = None if regen or result else answers.get(session.id, identity, session_expires_at=session.expires_at)
                 if cached:
                     result = dict(cached)
@@ -246,6 +247,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                     if not completed:
                         provider_calls = list(provider.usage)
                     provider.usage.clear()
+                    provider.attempts.clear()
                 if not completed:
                     write_metrics({'request_id': rid, 'status': 'cancelled_or_timed_out',
                                    'metrics': {'provider_calls': provider_calls}})

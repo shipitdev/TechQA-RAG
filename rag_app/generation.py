@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import random
 import re
@@ -44,6 +45,20 @@ class GroqREST:
             raise GenerationError("Groq API key is not configured")
         self.model, self.timeout, self.post = model, min(timeout, 75), post
         self.usage: list[dict[str, Any]] = []
+        self.attempts: list[dict[str, Any]] = []
+        self._remaining_tokens, self._quota_ready_at = float("inf"), 0.0
+
+    def _remember_quota(self, headers):
+        try:
+            remaining = float(headers["x-ratelimit-remaining-tokens"])
+            reset = re.fullmatch(r"(?:(\d+(?:\.\d+)?)m)?(?:(\d+(?:\.\d+)?)s)?", headers["x-ratelimit-reset-tokens"])
+            if reset and any(reset.groups()) and math.isfinite(remaining) and remaining >= 0:
+                seconds = float(reset[1] or 0) * 60 + float(reset[2] or 0)
+                if math.isfinite(seconds):
+                    self._remaining_tokens = remaining
+                    self._quota_ready_at = time.monotonic() + seconds + 2
+        except (KeyError, TypeError, ValueError):
+            pass
 
     def json_call(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -57,30 +72,40 @@ class GroqREST:
         started = time.monotonic()
         deadline = min(started + self.timeout, getattr(self, "deadline", float("inf")))
         payload = None
-        for attempt in range(2):
+        for attempt in range(3):
+            # shortcut: estimate English prompt tokens; quota is per client, not shared across processes.
+            wait = max(0, self._quota_ready_at - time.monotonic()) if self._remaining_tokens < len(prompt) // 4 + 1600 else 0
+            if wait:
+                if wait >= deadline - time.monotonic():
+                    raise GenerationError("Quota reset exceeds request deadline", category="quota_deadline")
+                time.sleep(wait)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise GenerationError("Groq request failed") from None
+                raise GenerationError("Groq request deadline exceeded", category="request_deadline") from None
             try:
                 response = self.post(url, headers=headers, json=body, timeout=remaining)
+                self.attempts.append({"status": response.status_code})
+                self._remember_quota(response.headers)
                 response.raise_for_status()
                 payload = response.json()
                 break
             except httpx.HTTPStatusError as exc:
                 status = exc.response.status_code
-                retry = attempt == 0 and (status == 429 or 500 <= status <= 599)
+                retry = attempt < 2 and (status == 429 or 500 <= status <= 599)
                 retry_after = 0.0
                 if retry:
                     try:
-                        retry_after = max(0.0, float(exc.response.headers.get("Retry-After", 0)))
+                        value = float(exc.response.headers.get("Retry-After", 0))
+                        retry_after = max(0.0, value) if math.isfinite(value) else 0
                     except (TypeError, ValueError):
                         pass
-                delay = retry_after + random.uniform(0.05, 0.2)
+                delay = max(5 if status == 429 else 0, retry_after + 2) + random.uniform(0.05, 0.2)
                 if retry and delay < deadline - time.monotonic():
                     time.sleep(delay)
                     continue
                 raise GenerationError(f"Groq HTTP {status}", category=f"http_{status}") from None
             except httpx.TransportError as exc:
+                self.attempts.append({"status": None, "error_type": type(exc).__name__})
                 raise GenerationError("Groq transport " + type(exc).__name__, category="transport_" + type(exc).__name__) from None
             except (ValueError, TypeError) as exc:
                 raise GenerationError("Groq returned an invalid HTTP response", category="invalid_response") from None
@@ -184,6 +209,20 @@ class AnswerGenerator:
 
     def __init__(self, json_call: Callable[[str, dict[str, Any]], dict[str, Any]]):
         self.json_call = json_call
+        self.trace: list[dict[str, Any]] = []
+
+    def _call(self, stage, prompt, schema):
+        # Private diagnostics only; never included in the released answer.
+        event = {"stage": stage}
+        self.trace.append(event)
+        try:
+            result = self.json_call(prompt, schema)
+        except GenerationError as exc:
+            event["error_type"] = exc.category
+            raise
+        event["result"] = deepcopy(result)
+        return result
+
 
     @staticmethod
     def _json(value: Any) -> str:
@@ -201,12 +240,13 @@ class AnswerGenerator:
         schema = deepcopy(ANSWER_SCHEMA)
         schema["properties"]["citations"]["items"]["enum"] = list(dict.fromkeys(
             str(item["id"]) for item in evidence if "id" in item))
-        result = self.json_call(prompt, schema)
+        result = self._call("repair" if repair else "write", prompt, schema)
         if (result.get("status") not in {"answered", "needs_clarification", "insufficient_evidence"} or
-                not isinstance(result.get("answer"), str) or not result["answer"].strip() or
+                not isinstance(result.get("answer"), str) or
+                (result.get("status") == "answered" and not result["answer"].strip()) or
                 not isinstance(result.get("citations"), list) or
                 not all(isinstance(c, str) for c in result["citations"])):
-            raise GenerationError("Groq returned an invalid answer shape")
+            raise GenerationError("Groq returned an invalid answer shape", category="invalid_answer_shape")
         return result
 
     @staticmethod
@@ -230,17 +270,22 @@ class AnswerGenerator:
         return {"status": "insufficient_evidence", "answer": "The available sources do not support a complete answer.", "citations": []}
 
     def _verify(self, question: str, evidence: list[dict[str, Any]], draft: dict[str, Any]) -> dict[str, Any]:
-        result = self.json_call("Verify support and completeness using only evidence. Check missing required steps and version conflicts. "
+        result = self._call("verify", "Verify support and completeness using only evidence. "
+            "The supported field means the answer's claims are backed by evidence, not that a product supports a feature. "
+            "An evidence-backed answer saying a feature is NOT supported must have supported=true. "
+            "Judge completeness against the question asked; do not require unrequested setup or remediation steps. "
+            "Check missing required steps and version conflicts for the same product, component and conditions. "
+            "A complete verdict requires supported=true and complete=true; otherwise use evidence_gap or clarify. "
             "If the draft contains approved_answer, also check that the presented answer preserves its meaning and qualifications. "
             f"Question: {question}\nEvidence: {self._json(evidence)}\nDraft: {self._json(draft)}", VERIFY_SCHEMA)
         if (result.get("verdict") not in {"complete", "evidence_gap", "clarify"} or
                 not isinstance(result.get("supported"), bool) or not isinstance(result.get("complete"), bool) or
                 not isinstance(result.get("missing_steps"), list) or not isinstance(result.get("version_conflicts"), list) or
                 not isinstance(result.get("findings"), list)):
-            raise GenerationError("Groq returned an invalid verification shape")
+            raise GenerationError("Groq returned an invalid verification shape", category="invalid_verification_shape")
         return result
-
     def generate(self, question: str, evidence: list[dict[str, Any]]) -> dict[str, Any]:
+        self.trace.clear()
         source_ids = {str(item["id"]) for item in evidence if "id" in item}
         if not evidence or not source_ids:
             return self._non_answer("insufficient_evidence")
@@ -256,7 +301,7 @@ class AnswerGenerator:
             if draft["status"] != "answered":
                 return self._non_answer(draft["status"])
             if self._citation_error(draft, source_ids):
-                raise GenerationError("Answer contains invalid or missing citations")
+                raise GenerationError("Answer contains invalid or missing citations", category="invalid_citations")
         verdict = self._verify(question, evidence, draft)
         if (verdict["verdict"] == "complete" and verdict["supported"] and verdict["complete"]
                 and not verdict["missing_steps"] and not verdict["version_conflicts"]):
@@ -275,7 +320,7 @@ class AnswerGenerator:
         if repaired["status"] != "answered":
             return self._non_answer(repaired["status"])
         if self._citation_error(repaired, source_ids):
-            raise GenerationError("Answer contains invalid or missing citations")
+            raise GenerationError("Answer contains invalid or missing citations", category="invalid_citations")
         final_verdict = self._verify(question, evidence, repaired)
         if (final_verdict["verdict"] == "complete" and final_verdict["supported"] and final_verdict["complete"]
                 and not final_verdict["missing_steps"] and not final_verdict["version_conflicts"]):
