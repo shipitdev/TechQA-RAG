@@ -108,6 +108,59 @@ class AnswerGeneratorTests(unittest.TestCase):
         with self.assertRaisesRegex(GenerationError, "not configured"):
             GroqREST(api_key="")
 
+    def test_empty_nonanswers_are_safe_but_empty_answers_are_errors(self):
+        for status in ("insufficient_evidence", "needs_clarification"):
+            result, calls = self.run_with([{"status": status, "answer": "", "citations": []}])
+            self.assertEqual(result["status"], status)
+            self.assertTrue(result["answer"])
+            self.assertEqual(len(calls), 1)
+        with self.assertRaises(GenerationError) as error:
+            self.run_with([{"status": "answered", "answer": "", "citations": []}])
+        self.assertEqual(error.exception.category, "invalid_answer_shape")
+
+    def test_private_trace_records_verifier_rejection_without_changing_output(self):
+        replies = [self.answer.copy(), {**self.complete, "verdict": "evidence_gap", "complete": False}]
+        generator = AnswerGenerator(lambda *args: replies.pop(0))
+        result = generator.generate("How?", self.evidence)
+        self.assertEqual(result["status"], "insufficient_evidence")
+        self.assertEqual([x["stage"] for x in generator.trace], ["write", "verify"])
+        self.assertEqual(generator.trace[-1]["result"]["verdict"], "evidence_gap")
+        self.assertNotIn("trace", result)
+
+    def test_quota_headers_pace_next_call_and_respect_deadline(self):
+        clock = [0.0]
+        calls = []
+        def sleep(seconds): clock[0] += seconds
+        def post(url, **kwargs):
+            calls.append(clock[0])
+            return httpx.Response(200, request=httpx.Request("POST", url),
+                headers={"x-ratelimit-remaining-tokens": "10", "x-ratelimit-reset-tokens": "1m2s"},
+                json={"choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}]})
+        with patch("rag_app.generation.time.monotonic", lambda: clock[0]), patch("rag_app.generation.time.sleep", sleep):
+            client = GroqREST("secret", post=post)
+            client.json_call("test", {})
+            client.json_call("test", {})
+            self.assertGreaterEqual(calls[1]-calls[0], 64)
+            client.deadline = clock[0] + 5
+            with self.assertRaises(GenerationError) as error: client.json_call("test", {})
+            self.assertEqual(error.exception.category, "quota_deadline")
+            self.assertEqual(len(calls), 2)
+
+    def test_two_rate_limits_get_buffered_bounded_retries(self):
+        clock, calls = [0.0], []
+        def post(url, **kwargs):
+            calls.append(clock[0])
+            return httpx.Response(429 if len(calls) < 3 else 200,
+                request=httpx.Request("POST", url), headers={"retry-after": "nan"},
+                json={"choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}]})
+        def sleep(seconds): clock[0] += seconds
+        with patch("rag_app.generation.time.monotonic", lambda: clock[0]), patch("rag_app.generation.time.sleep", sleep):
+            client = GroqREST("secret", post=post)
+            self.assertEqual(client.json_call("test", {}), {})
+        self.assertEqual(len(calls), 3)
+        self.assertGreaterEqual(calls[1]-calls[0], 5)
+        self.assertGreaterEqual(calls[2]-calls[1], 5)
+
     def test_unreferenced_citation_array_does_not_pass(self):
         uncited = {**self.answer, "answer": "Use X without an inline citation."}
         calls = []

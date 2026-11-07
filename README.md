@@ -121,6 +121,8 @@ Set `GROQ_API_KEY` in the root `.env`. Existing installations can use the `GROK_
 
 The model namespace starts with `openai/`, but requests go to **Groq's API**. The model is configured centrally in `rag_app/generation.py`.
 
+Generation uses remaining-token/reset headers to pace calls and keeps quota waits within request deadlines. The token estimate is approximate and applies to one provider instance, not a shared multi-worker quota. Offline case collection saves private writer/repair/verifier results and content-free HTTP statuses for diagnosis; these artifacts stay outside Git and are never returned as released answers.
+
 ### Prepare or restore artifacts
 
 This is a code-only checkout, not a bundled dataset or one-command model download. Restore the matching prepared artifacts before serving:

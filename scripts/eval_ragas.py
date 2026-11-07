@@ -189,6 +189,7 @@ def collect(args):
             started = time.perf_counter()
             retrieved = retriever.retrieve(question)
             provider.usage.clear()
+            provider.attempts.clear()
             provider.deadline = time.monotonic() + 180
             try:
                 answer = generator.generate(question, retrieved['sources'])
@@ -196,7 +197,8 @@ def collect(args):
                 answer = {'status': 'generation_error', 'answer': '', 'error_type': exc.category}
             case = make_case(q, original_docs[q['DOCUMENT']]['text'], retrieved, answer)
             case['generation'] = {'seconds': time.perf_counter() - started,
-                                  'provider_calls': list(provider.usage), 'error_type': answer.get('error_type')}
+                                  'provider_calls': list(provider.usage), 'error_type': answer.get('error_type'),
+                                  'http_attempts': list(provider.attempts), 'trace': list(generator.trace)}
             save(path, case)
             print(f"  saved {case['status']}; {len(case['sources'])} passages", flush=True)
     finally:
