@@ -49,3 +49,24 @@ def test_dataset_identity_survives_changed_answers(tmp_path):
     changed.write_text(json.dumps(payload))
     publish(changed, client)
     assert client.read_dataset.call_args.kwargs["dataset_name"] == original
+
+
+def test_model_identity_is_visible_without_exporting_extra_call_fields(tmp_path):
+    import json
+
+    payload = json.loads(Path("evaluations/fixtures/offline_demo.json").read_text())
+    payload["cases"][0]["generation"] = {"provider_calls": [{
+        "provider": "tokenharbor", "model": "deepseek-v4.1-flash:free", "private": "omit-me"}]}
+    path = tmp_path / "cases.json"
+    path.write_text(json.dumps(payload))
+    client = Mock()
+    client.read_dataset.return_value = SimpleNamespace(id="dataset")
+    client.list_examples.return_value = []
+
+    def evaluate(target, **kwargs):
+        example = client.create_examples.call_args.kwargs["examples"][0]
+        assert target(example["inputs"])["model_calls"] == [{
+            "provider": "tokenharbor", "model": "deepseek-v4.1-flash:free"}]
+
+    client.evaluate.side_effect = evaluate
+    publish(path, client)

@@ -59,6 +59,10 @@ def publish(directory, client, ragas=None):
             "status": case["status"],
             "sources": case["sources"],
             "original_trace_id": case.get("langsmith_run_id"),
+            "model_calls": [
+                {key: call.get(key) for key in ("provider", "model")}
+                for call in case.get("generation", {}).get("provider_calls", [])
+            ],
         }
 
     def outcome(run, example):

@@ -24,7 +24,7 @@ Question → Gemma embedding → Qdrant exact search → BGE reranking
 
 Add `LANGSMITH_API_KEY` to the server's `.env`. The default project is `techqa-rag`. Set `LANGSMITH_TRACING=false` to disable export. Traces contain questions, retrieved passages, private drafts and verification decisions, so keep this project private.
 
-Each question has a parent trace with child steps for query embedding, exact search, reranking, context selection and model calls. Inspect timings, actual token usage, cache hits, source passages, repair attempts and the released outcome. The answer workspace links to its trace. Local diagnostic logs continue to work when tracing is disabled or export fails.
+Each question has a parent trace with child steps for query embedding, exact search, reranking, context selection and model calls. Inspect timings, actual token usage, cache hits, source passages, writer/verifier decisions and the released outcome. The answer workspace links to its trace. Local diagnostic logs continue to work when tracing is disabled or export fails.
 
 The workspace streams actual activity and retrieved excerpts. Verified answers and checked OpenUI layouts appear after their release checks. The run history remains available after completion. Desktop uses a compact navigation rail, while smaller screens stack the answer and evidence.
 
@@ -73,6 +73,27 @@ Approval and review notes are required for feedback-based RAGAS evaluation. Use 
 | Online | User feedback, reviewed regression cases, sampled judging and drift | Helpful/unhelpful votes and optional comments save the run for review and sync to LangSmith. Reviewed references can be exported for RAGAS. Sampled live judging and drift monitoring remain planned. |
 
 Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Existing origin/session, withholding and generated-component checks cover specific application contracts; they are not a comprehensive safety benchmark. Optional semantic metrics compare against available references, which may omit valid alternative answers.
+
+### Bounded generation comparison with prompt version 6
+
+The [saved comparison](evaluations/results/generation_v6.json) keeps the same 30 questions, references and source passages. The updated flow uses one writer, code-only display of valid writer-selected citation IDs and one verifier. A failed factual check withholds the answer. Code formatted citations in **21/30** cases, so prompt changes alone did not solve citation output.
+
+Groq completed 28 cases. At the user's request, the final two used TokenHarbor `deepseek-v4.1-flash:free` with frozen baseline evidence. Those two are excluded from the controlled Groq comparison. One fallback response reached its output limit and was retried with a larger allowance, then withheld. One Groq case retains its provider HTTP429 failure.
+
+| Controlled measurement | Before | After | Cases |
+|---|---:|---:|---:|
+| Released answers, same Groq model | 14/28 | 18/28 | 28 |
+| Citation-format failures | 6 | 0 | 28 |
+| Mean model stages, shared released answers | 2.91 | 2.00 | 11 |
+| Context recall | 83.3% | 83.3% | 30, unchanged context |
+| Context precision | 87.9% | 87.9% | 4, unchanged context |
+| Paired faithfulness | 92.8% | 98.3% | 6 |
+| Paired reference correctness | 45.0% | 32.3% | 4 |
+| Paired completeness | 41.8% | 50.0% | 4 |
+
+Across all 30 outcomes there were **19 answers, 9 withheld responses, 1 clarification and 1 provider failure**. All 19 released answers passed citation-format checks. The paired semantic rows use only shared, unflagged scored cases. Raw candidate faithfulness was **93.0% across 11 answers**. Reference correctness decreased on its four shared cases and requires review. Q117 added version-qualified information beyond the reference, while Q376's bulletin-link reference and Q548's claim alignment remain review concerns. These results do not establish a broad answer-quality improvement.
+
+Collection and diagnostics used **64/66 HTTP attempts and 309,561 reported tokens**, including archived attempts. Recorded judging used **77/120 attempts and 116,119 tokens**, with **172 judge-cache hits** across scoring passes. The judge was stopped when the user ran out of Groq quota, and cache-only assembly made zero model calls. Recorded judge usage may omit in-flight activity at interruption. Answer relevancy was not rescored. Timing differences include quota waits and account changes. Reserved development remains unused.
 
 ### Wider training run with prompt version 5
 
@@ -182,7 +203,9 @@ Set `GROQ_API_KEY` in the root `.env`. Existing installations can use the `GROK_
 
 The model namespace starts with `openai/`, but requests go to **Groq's API**. The model is configured centrally in `rag_app/generation.py`.
 
-Generation uses remaining-token/reset headers to pace calls and keeps quota waits within request deadlines. The token estimate is approximate and applies to one provider instance, not a shared multi-worker quota. Offline case collection saves private writer/repair/verifier results and content-free HTTP statuses for diagnosis; these artifacts stay outside Git and are never returned as released answers.
+Standalone generation uses one writer and one verifier, with no factual repair loop. Code can display valid source IDs already selected by the writer while preserving answer text. The verifier then checks support, relevance, completeness and versions. Unknown source IDs fail validation. Rejected answers are withheld or request clarification. This is a two-logical-call limit for standalone generation. Transport retries, follow-up resolution and optional presentation calls are accounted separately.
+
+Generation uses remaining-token/reset headers to pace calls and keeps quota waits within request deadlines. The token estimate is approximate and applies to one provider instance, not a shared multi-worker quota. Offline case collection saves private writer/verifier results (and repair attempts in historical runs) and content-free HTTP statuses for diagnosis; these artifacts stay outside Git and are never returned as released answers.
 
 ### Prepare or restore artifacts
 
