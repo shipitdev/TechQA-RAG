@@ -100,7 +100,7 @@ def test_v1_question_search_verify_cache_followup_regenerate_clear(
                 "findings": [],
                 "unsupported_claims": [],
             }
-        if "unrelated product" in prompt:
+        if "unrelated product" in json.loads(prompt[1]["content"])["question"]:
             return {"status": "insufficient_evidence", "answer": "", "citations": []}
         return {"status": "answered", "answer": text + " [S1]", "citations": ["S1"]}
 
