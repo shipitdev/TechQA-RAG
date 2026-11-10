@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, MouseEvent, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { citationLinks, VerifiedUI } from "@/lib/verified-ui";
@@ -111,7 +111,7 @@ export default function Workspace() {
   const [error, setError] = useState("");
   const [failedRun, setFailedRun] = useState<Pick<FinalEvent, "request_id" | "metrics" | "langsmith_url"> | null>(null);
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
-  const [controller, setController] = useState<AbortController | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
   const [openUiMessage, setOpenUiMessage] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const runCounter = useRef(0);
@@ -132,7 +132,7 @@ export default function Workspace() {
       setStages([]);
       setRetrievedSources([]);
       setError("");
-    setFailedRun(null);
+      setFailedRun(null);
       setOpenUiMessage("");
     };
     window.addEventListener("pagehide", endSessionOnClose);
@@ -152,10 +152,10 @@ export default function Workspace() {
 
   async function ask(text: string, regenerate = false) {
     const submitted = text;
-    if (!submitted.trim() || busy) return;
+    if (!submitted.trim() || busy || controllerRef.current) return;
     const aborter = new AbortController();
     const runId = ++runCounter.current;
-    setController(aborter);
+    controllerRef.current = aborter;
     setBusy(true);
     setElapsed(0);
     setError("");
@@ -224,8 +224,14 @@ export default function Workspace() {
       else setError(caught instanceof Error ? caught.message : "Something went wrong.");
     } finally {
       setBusy(false);
-      setController(null);
+      if (controllerRef.current === aborter) controllerRef.current = null;
     }
+  }
+
+  function stopRequest(event: MouseEvent<HTMLButtonElement>) {
+    // Cancellation can switch this same button back to submit during the click.
+    event.preventDefault();
+    controllerRef.current?.abort();
   }
 
   async function newSession() {
@@ -245,7 +251,7 @@ export default function Workspace() {
       setStages([]);
       setRetrievedSources([]);
       setError("");
-    setFailedRun(null);
+      setFailedRun(null);
       setOpenUiMessage("");
       inputRef.current?.focus();
     } catch (caught) {
@@ -323,7 +329,7 @@ export default function Workspace() {
 
             {busy && (
               <section className="progress-panel" aria-live="polite" aria-busy="true">
-                <div className="activity-header"><span>Live activity</span><span>{elapsed}s</span><button className="text-button" type="button" onClick={() => controller?.abort()}>Stop</button></div>
+                <div className="activity-header"><span>Live activity</span><span>{elapsed}s</span><button className="text-button" type="button" onClick={stopRequest}>Stop</button></div>
                 <ol className="activity-stream" role="log" aria-label="Research activity">
                   {stages.map((stage, index) => (
                     <li key={`${stage.name}-${index}`} className={stage.state}>
@@ -379,7 +385,7 @@ export default function Workspace() {
             <form className="composer" onSubmit={submit}>
               <label className="sr-only" htmlFor="question">Ask a question about your knowledge base</label>
               <textarea ref={inputRef} id="question" value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={submitOnEnter} placeholder="Ask a question about your documents…" rows={2} maxLength={8000} disabled={busy} />
-              <div className="composer-footer"><span><kbd>Enter</kbd> to ask <span className="composer-separator">·</span> <kbd>Shift + Enter</kbd> for a new line</span><button className="send-button" type={busy ? "button" : "submit"} disabled={!busy && !question.trim()} onClick={busy ? () => controller?.abort() : undefined} aria-label={busy ? "Stop request" : "Send question"}><span aria-hidden="true">{busy ? "■" : "↑"}</span></button></div>
+              <div className="composer-footer"><span><kbd>Enter</kbd> to ask <span className="composer-separator">·</span> <kbd>Shift + Enter</kbd> for a new line</span><button className="send-button" type={busy ? "button" : "submit"} disabled={!busy && !question.trim()} onClick={busy ? stopRequest : undefined} aria-label={busy ? "Stop request" : "Send question"}><span aria-hidden="true">{busy ? "■" : "↑"}</span></button></div>
             </form>
             <p className="privacy-note">Questions and retrieved evidence are sent to Groq for answer generation. Conversation memory lasts for this session. When LangSmith is enabled, questions, evidence and model outputs are also recorded there.</p>
           </div>
