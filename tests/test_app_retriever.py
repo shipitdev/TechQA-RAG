@@ -126,3 +126,18 @@ def test_index_identity_rejects_a_different_active_build(tmp_path):
         qdrant.scroll=lambda *a,**k: ([SimpleNamespace(payload={'index_build_id':'another-build'})],None)
         with pytest.raises(ValueError,match='index version'):r.index_identity()
     finally:r.close()
+
+
+def test_retrieval_cache_evicts_old_entries(tmp_path):
+    retriever = Retriever(source_store=Source(), qdrant_client=FakeQdrant(),
+                          embed_query=lambda _: [1.] + [0.] * 767, score_pairs=lambda _: [],
+                          tokenizer=FakeTokenizer(), cache_path=tmp_path/'bounded.sqlite')
+    try:
+        retriever.cache.executemany('INSERT INTO query_vectors VALUES (?,?)',
+                                   ((str(i),'[]') for i in range(2050)))
+        retriever._prune_cache()
+        assert retriever.cache.execute('SELECT count(*) FROM query_vectors').fetchone()[0] == 2048
+        assert retriever.cache.execute('SELECT 1 FROM query_vectors WHERE cache_key=?',('0',)).fetchone() is None
+        assert retriever.cache.execute('SELECT 1 FROM query_vectors WHERE cache_key=?',('2049',)).fetchone()
+    finally:
+        retriever.close()

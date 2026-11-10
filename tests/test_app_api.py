@@ -126,3 +126,27 @@ def test_depleted_credits_show_billing_error_without_answer(isolated_root):
     assert 'Groq billing or credits need attention' in response.text
     assert 'event: final' not in response.text
     assert 'provider billing details' not in response.text
+
+
+def test_active_index_change_reloads_default_retriever(isolated_root,monkeypatch):
+    from rag_app import retriever as module
+    directory=isolated_root/'data/indexes';directory.mkdir(parents=True)
+    active=directory/'active.json';active.write_text('{"build_id":"one"}')
+    instances=[]
+    class ManagedSearch(Search):
+        def __init__(self):
+            super().__init__()
+            self.index_manifest=json.loads(active.read_text())
+            self.closed=False
+            instances.append(self)
+        def index_identity(self):return {'build':self.index_manifest['build_id']}
+        def close(self):self.closed=True
+    monkeypatch.setattr(module,'Retriever',ManagedSearch)
+    writer=Writer();client=TestClient(api.create_app(generator=writer))
+    first=client.post('/ask',json={'question':'Same question?'})
+    active.write_text('{"build_id":"two"}')
+    second=client.post('/ask',json={'question':'Same question?'})
+    assert '"build": "one"' in first.text and '"build": "two"' in second.text
+    assert len(instances)==2 and instances[0].closed
+    assert len(writer.calls)==2
+    assert '"answer_cache_hit": false' in second.text

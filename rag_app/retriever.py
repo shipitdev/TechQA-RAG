@@ -38,32 +38,46 @@ def _versions(names):
 
 class Retriever:
     def __init__(self, source_store=None, qdrant_client=None, *, embed_query=None, score_pairs=None,
-                 tokenizer=None, cache_path=None):
+                 tokenizer=None, cache_path=None, index_manifest=None, index_root=None):
+        self.index_root = Path(index_root or ROOT / "data/indexes")
+        active_path = self.index_root / "active.json"
+        self.index_manifest = index_manifest
+        if self.index_manifest is None and source_store is None and active_path.is_file():
+            self.index_manifest = json.loads(active_path.read_text())
+        self.collection = self.index_manifest['collection'] if self.index_manifest else COLLECTION
+        self.corpus_version = self.index_manifest['corpus_version'] if self.index_manifest else CORPUS_VERSION
         source_path = ROOT / "data/source.sqlite3"
+        if self.index_manifest:
+            from rag_app.indexes import IndexManager
+            manager = IndexManager(self.index_root, qdrant_client)
+            source_path = manager.source_path(self.index_manifest)
+            if _sha256(source_path) != self.index_manifest['source_sha256']:
+                raise ValueError("Active source hash does not match index manifest")
         if source_store is None:
             if not source_path.is_file():
                 raise FileNotFoundError(f"Source store is missing; run scripts/import_qdrant.py first: {source_path}")
-            self.source = SourceStore(source_path)
-            self.source.db.close()
-            self.source.db = sqlite3.connect(str(source_path), check_same_thread=False)
-            self.source.db.row_factory = sqlite3.Row
+            self.source = SourceStore(source_path, readonly=True)
         else:
             self.source = source_store
         self.qdrant = qdrant_client
+        self._owns_qdrant = qdrant_client is None
         self.embed_query = embed_query
         self.score_pairs = score_pairs
         self.tokenizer = tokenizer
         self.cache_path = Path(cache_path or ROOT / "data/app/retrieval_cache.sqlite")
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-        # shortcut: persistent retrieval cache is not size-capped; add eviction before sustained public traffic.
         self.cache = sqlite3.connect(str(self.cache_path), check_same_thread=False)
-        # shortcut: persistent retrieval cache has no size cap; add eviction if query volume grows.
         self.cache.executescript("""
             CREATE TABLE IF NOT EXISTS query_vectors (cache_key TEXT PRIMARY KEY, vector TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS pair_scores (cache_key TEXT PRIMARY KEY, score REAL NOT NULL);
         """)
-        self.run_config = json.loads(RUN.read_text())
+        self.run_config = json.loads(RUN.read_text()) if self.index_manifest is None else {"cache_key": self.index_manifest["build_id"]}
         self.spec = json.loads((ROOT / "models-embeddings.json").read_text())["models"]["gemma2"]
+        if self.index_manifest:
+            expected = self.index_manifest['encoder'].get('models_sha256')
+            if expected and expected != _sha256(ROOT / 'models-embeddings.json'):
+                raise ValueError("Active index requires its pinned embedding configuration")
+        self._prune_cache()
         self.model = None
         self.native_tokenizer = None
         self.ce_model = None
@@ -71,6 +85,20 @@ class Retriever:
         self._gemma_assets = None
         self._reranker_assets = None
         self._owns_source = source_store is None
+
+    def _prune_cache(self):
+        # Fixed-size vectors and hashed keys keep these entry caps bounded on disk.
+        for table, cap in (("query_vectors", 2048), ("pair_scores", 50000)):
+            self.cache.execute(f"DELETE FROM {table} WHERE rowid NOT IN (SELECT rowid FROM {table} ORDER BY rowid DESC LIMIT ?)", (cap,))
+        self.cache.commit()
+
+    def check_assets(self):
+        directory = ROOT / "data/models/hub/models--google--embeddinggemma-2/snapshots" / self.spec['revision']
+        if any(not (directory / f['rfilename']).is_file() or (directory / f['rfilename']).stat().st_size != f['size'] for f in self.spec['files']):
+            raise ValueError("Pinned Gemma assets are missing or incomplete")
+        if any(not (RERANKER_DIR / name).is_file() for name in (
+                'config.json', 'model.safetensors', 'tokenizer.json', 'tokenizer_config.json')):
+            raise ValueError("Pinned reranker assets are missing")
 
     def _gemma_policy(self):
         # The input cache identity derives from the pinned file hashes in the run manifest.
@@ -139,7 +167,7 @@ class Retriever:
         if not row:
             self.cache.execute("INSERT OR REPLACE INTO query_vectors VALUES (?, ?)",
                                (key, json.dumps(vector, separators=(",", ":"))))
-            self.cache.commit()
+            self._prune_cache()
         return vector
 
     def _client(self):
@@ -150,11 +178,13 @@ class Retriever:
         return self.qdrant
 
     def index_identity(self):
-        points, _ = self._client().scroll(COLLECTION, limit=1, with_payload=True, with_vectors=False)
+        points, _ = self._client().scroll(self.collection, limit=1, with_payload=True, with_vectors=False)
         active = points[0].payload.get("index_build_id") if points else None
         if active != self.run_config["cache_key"]:
             raise ValueError("Qdrant index version does not match source manifest; run verified importer")
-        return {"collection": COLLECTION, "build": active}
+        if self.index_manifest and self._client().get_collection(self.collection).points_count != self.index_manifest['counts']['chunks']:
+            raise ValueError("Active index count mismatch")
+        return {"collection": self.collection, "build": active}
 
     def _tokenizer(self):
         if self.tokenizer is None:
@@ -231,7 +261,7 @@ class Retriever:
                 result[cid] = value
                 self.cache.execute("INSERT OR REPLACE INTO pair_scores VALUES (?, ?)", (key, value))
                 metrics["pair_cache_misses"] += 1
-            self.cache.commit()
+            self._prune_cache()
         return result
 
     def retrieve(self, question):
@@ -239,7 +269,9 @@ class Retriever:
             raise ValueError("question must be a non-empty string")
         total_started = time.perf_counter()
         metrics = {"query_cache_hits": 0, "query_cache_misses": 0,
-                   "pair_cache_hits": 0, "pair_cache_misses": 0}
+                   "pair_cache_hits": 0, "pair_cache_misses": 0,
+                   "encoder_revision": self.spec["revision"], "reranker_revision": RERANKER_REVISION,
+                   "selector_sha256": _sha256(ROOT / "scripts/context_selection.py")}
         started = time.perf_counter()
         vector = self._query_vector(question, metrics)
         metrics["embed_ms"] = (time.perf_counter() - started) * 1000
@@ -252,7 +284,7 @@ class Retriever:
                 raise
             exact_search = {"exact": True}
         started = time.perf_counter()
-        response = self._client().query_points(collection_name=COLLECTION, query=vector,
+        response = self._client().query_points(collection_name=self.collection, query=vector,
             limit=100, search_params=exact_search, with_payload=True)
         metrics["search_ms"] = (time.perf_counter() - started) * 1000
         points = response.points
@@ -260,8 +292,10 @@ class Retriever:
         chunks, docs = {}, {}
         for point in points:
             payload = point.payload or {}
-            if payload.get("corpus_version") != CORPUS_VERSION or not payload.get("chunk_id"):
+            if payload.get("corpus_version") != self.corpus_version or not payload.get("chunk_id"):
                 continue
+            if self.index_manifest and payload.get('index_build_id') != self.index_manifest['build_id']:
+                raise ValueError("Retrieved point belongs to a different index build")
             cid = payload["chunk_id"]
             chunk = self.source.get_chunk(cid)
             if chunk["document_id"] != payload.get("doc_id"):
@@ -305,12 +339,16 @@ class Retriever:
             selected.append({**passage, "source_id": sid, "chunk_ids": overlaps})
         metrics["total_ms"] = (time.perf_counter() - total_started) * 1000
         return {"sources": sources, "context_tokens": packed["tokens"], "context": packed["text"],
+                "candidate_chunk_ids": candidate_ids, "ranked_chunk_ids": ranked,
+                "candidate_documents": {cid: chunks[cid]["document_id"] for cid in candidate_ids},
                 "selected_passages": selected, "metrics": metrics}
 
     def close(self):
         self.cache.close()
         if self._owns_source:
             self.source.close()
+        if self._owns_qdrant and self.qdrant is not None:
+            self.qdrant.close()
 
 
 _default_retriever = None

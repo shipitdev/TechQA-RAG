@@ -5,11 +5,14 @@ from pathlib import Path
 
 
 class SourceStore:
-    def __init__(self, path):
+    def __init__(self, path, *, readonly=False):
         self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(self.path)
+        if not readonly:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.db = sqlite3.connect(self.path.resolve().as_uri() + '?mode=ro', uri=True, check_same_thread=False) if readonly else sqlite3.connect(self.path)
         self.db.row_factory = sqlite3.Row
+        if readonly:
+            return
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS documents (document_id TEXT PRIMARY KEY, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS chunks (chunk_id TEXT PRIMARY KEY, document_id TEXT NOT NULL, data TEXT NOT NULL);
