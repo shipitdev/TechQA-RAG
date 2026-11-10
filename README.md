@@ -225,7 +225,7 @@ Stage changes into a separate collection, then activate the returned build ID. A
 .venv-ingest/bin/python -m scripts.manage_index activate PREVIOUS_BUILD_ID
 ```
 
-Staging copies unchanged vectors to preserve an isolated, recoverable version. It embeds the changed documents only. The serving process picks up activation on its next request. Keep version directories and their Qdrant collections together. Stage each batch from the currently active version.
+Staging copies unchanged vectors to preserve an isolated, recoverable version. It embeds the changed documents only. The serving process picks up activation on its next request. Keep version directories and their Qdrant collections together. Stage each batch from the currently active version. If the activation pointer is lost, serving stops until you explicitly activate a validated build.
 
 ### Back up and restore
 

@@ -18,7 +18,9 @@
     "unchanged_update_embeds_zero": true,
     "activation_and_rollback": true,
     "restored_full_membership_validated": true,
-    "restored_exact_top10_parity_queries": 3
+    "restored_exact_top10_parity_queries": 3,
+    "missing_activation_fails_closed": true,
+    "explicit_activation_recovers_missing_pointer": true
   },
   "verifier_canaries": {
     "passed": 4,
@@ -116,12 +118,12 @@
   ],
   "verification": {
     "local_tests": {
-      "passed": 139,
+      "passed": 141,
       "skipped": 1,
       "subtests": 3
     },
     "clean_public_copy": {
-      "passed": 124,
+      "passed": 126,
       "skipped": 1,
       "subtests": 3
     },

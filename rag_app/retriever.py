@@ -42,8 +42,11 @@ class Retriever:
         self.index_root = Path(index_root or ROOT / "data/indexes")
         active_path = self.index_root / "active.json"
         self.index_manifest = index_manifest
-        if self.index_manifest is None and source_store is None and active_path.is_file():
-            self.index_manifest = json.loads(active_path.read_text())
+        if self.index_manifest is None and source_store is None:
+            if active_path.is_file():
+                self.index_manifest = json.loads(active_path.read_text())
+            elif any(self.index_root.glob('*/manifest.json')):
+                raise ValueError("Managed index activation is missing; activate a verified build before serving")
         self.collection = self.index_manifest['collection'] if self.index_manifest else COLLECTION
         self.corpus_version = self.index_manifest['corpus_version'] if self.index_manifest else CORPUS_VERSION
         source_path = ROOT / "data/source.sqlite3"

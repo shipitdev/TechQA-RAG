@@ -181,11 +181,14 @@ class IndexManager:
     def activate(self, build_id):
         with self.locked():
             value = self.validate(self.manifest(build_id))
-            active = self.active()
-            if value.get("parent") not in (None, active["build_id"]) and value[
-                "build_id"
-            ] != active.get("parent"):
-                raise ValueError("Stale activation: stage again from the active build")
+            if (self.root / "active.json").exists():
+                active = self.active()
+                if value.get("parent") not in (None, active["build_id"]) and value[
+                    "build_id"
+                ] != active.get("parent"):
+                    raise ValueError(
+                        "Stale activation: stage again from the active build"
+                    )
             atomic_json(self.root / "active.json", value)
             return value
 

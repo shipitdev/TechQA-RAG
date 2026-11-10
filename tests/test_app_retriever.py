@@ -141,3 +141,11 @@ def test_retrieval_cache_evicts_old_entries(tmp_path):
         assert retriever.cache.execute('SELECT 1 FROM query_vectors WHERE cache_key=?',('2049',)).fetchone()
     finally:
         retriever.close()
+
+
+def test_missing_managed_activation_does_not_serve_legacy_data(tmp_path,monkeypatch):
+    monkeypatch.setattr(retriever_module,'ROOT',tmp_path)
+    version=tmp_path/'data/indexes/version';version.mkdir(parents=True)
+    (version/'manifest.json').write_text('{}')
+    with pytest.raises(ValueError,match='activation is missing'):
+        Retriever()

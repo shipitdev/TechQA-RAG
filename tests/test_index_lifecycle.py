@@ -143,6 +143,7 @@ def test_repeated_raw_update_is_free_and_parallel_staging_cannot_overwrite(tmp_p
 
     def encode(_):
         return [1.0] + [0.0] * 767
+
     first = manager.stage(
         {"a": {"text": "Updated guidance"}}, [], prepare, encode, {"model": "pinned"}
     )
@@ -217,3 +218,10 @@ def test_adopt_rejects_missing_source_and_unsafe_identity(tmp_path):
     with pytest.raises(ValueError, match="identity"):
         manager.adopt(source, "test", "../outside", {})
     assert not (tmp_path / "outside").exists()
+
+
+def test_explicit_activation_recovers_a_lost_pointer(tmp_path):
+    manager, original = seed(tmp_path)
+    (manager.root / "active.json").unlink()
+    manager.activate(original["build_id"])
+    assert manager.active() == original
