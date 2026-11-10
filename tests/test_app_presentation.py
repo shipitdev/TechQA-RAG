@@ -42,3 +42,18 @@ def test_presentation_verifies_only_cited_sources_and_preserves_approved_answer(
     output=result();output['sources'].append({'id':'S2','text':'Unrelated passage.'})
     with patch('rag_app.presentation.httpx.get',return_value=Reply({'system_prompt':'safe components'})),patch('rag_app.presentation.httpx.post',return_value=Reply({'valid':True,'visible_text':'Restart. [S1]','citation_source_ids':['S1']})):
         assert generate_presentation(output,'How?',Capture(True)) is not None
+
+
+def test_openui_component_instructions_use_system_and_answer_stays_user_data():
+    import json
+
+    class Capture(Judge):
+        def json_call(self, messages, schema):
+            assert [m['role'] for m in messages] == ['system', 'user']
+            assert 'safe components' in messages[0]['content']
+            assert 'Restart. [S1]' not in messages[0]['content']
+            assert json.loads(messages[1]['content']) == {'approved_answer': 'Restart. [S1]'}
+            return super().json_call(messages, schema)
+
+    with patch('rag_app.presentation.httpx.get', return_value=Reply({'system_prompt': 'safe components'})), patch('rag_app.presentation.httpx.post', return_value=Reply({'valid': True, 'visible_text': 'Restart. [S1]', 'citation_source_ids': ['S1']})):
+        assert generate_presentation(result(), 'How?', Capture(True)) is not None

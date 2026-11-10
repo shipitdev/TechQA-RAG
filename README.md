@@ -15,6 +15,7 @@ Question → Gemma embedding → Qdrant exact search → BGE reranking
 - **Retrieval:** pinned `google/embeddinggemma-2`, cosine search over structured HTML chunks, BGE reranking and reciprocal-rank fusion with the dense ranking.
 - **Evidence:** a bounded context pack retains source identities and coordinates. The serving retriever currently uses dense search; BM25/hybrid helpers are available for evaluation, not enabled in the live path.
 - **Answers:** Groq `openai/gpt-oss-120b` writes and separately verifies an answer. One repair is allowed; unresolved evidence gaps withhold the answer.
+- **Prompts:** `strict_v5_message_roles` puts task instructions in system messages and questions, evidence, drafts and repair findings in JSON user messages. Follow-ups, memory summaries and OpenUI use the same structure. Output schemas remain explicit in the provider request.
 - **UI:** Next.js/React and OpenUI render finding cards, steps, configuration rows and citations. All generated factual fields, including hidden tabs, are checked before release. Invalid layouts fall back to verified text.
 - **Sessions:** recent conversation plus a summary, current-session memory, exact answer caching and an explicit regeneration bypass.
 - **Evaluation:** an offline RAGAS runner scores saved evidence and released answers. Judge decisions and local query embeddings are cached; withheld responses and evaluation errors stay visible.

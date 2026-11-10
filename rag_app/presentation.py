@@ -2,7 +2,7 @@
 import os
 import time
 import httpx
-from rag_app.generation import GenerationError
+from rag_app.generation import GenerationError, build_messages
 
 UI_SCHEMA = {'type': 'OBJECT', 'properties': {'openui': {'type': 'STRING'}}, 'required': ['openui']}
 
@@ -14,7 +14,9 @@ def generate_presentation(result, question, generator):
     try:
         ui = os.getenv('UI_INTERNAL_URL', 'http://127.0.0.1:3000')
         spec = httpx.get(ui + '/api/ui-spec', timeout=5).json()
-        prompt = spec['system_prompt'] + '\nPut only the OpenUI Lang program in the openui JSON field. Present this verified answer without adding facts. Use the supplied source IDs.\n' + result['answer']
+        prompt = build_messages(
+            spec['system_prompt'] + '\nPut only the OpenUI Lang program in the openui JSON field. Present this verified answer without adding facts. Use the source IDs in the approved answer.',
+            {'approved_answer': result['answer']})
         lang = generator.json_call(prompt, UI_SCHEMA)['openui']
         checked = httpx.post(ui + '/api/ui-validate', json={'openui': lang, 'sources': result['sources']}, timeout=5).json()
         if not checked.get('valid'):
