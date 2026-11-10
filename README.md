@@ -30,7 +30,7 @@ The workspace streams actual activity and retrieved excerpts. Verified answers a
 
 For developers and coding agents, `/ask` remains a server-sent event endpoint. `stage` events describe activity, `evidence` carries retrieved `sources`, `final` carries the approved outcome and `error` carries a safe error category/message. `done` closes the run. Final statuses are `answered`, `needs_clarification` and `insufficient_evidence`. Existing exact-cache, session, cancellation and regeneration behavior remains covered by tests.
 
-Collect a fixed random training sample with a hard HTTP-attempt cap. Quota failures stop collection and are retried when the same unchanged run resumes. Completed cases are saved after each question, with a `completed.json` snapshot for inspection.
+Collect a fixed random training sample with a hard HTTP-attempt cap. Provider HTTP 429 responses stop collection and are retried when the same unchanged run resumes. Local per-request quota deadlines are recorded as failed requests while collection continues. Completed cases are saved after each question, with a `completed.json` snapshot for inspection.
 
 ```bash
 python -m scripts.eval_ragas collect --limit 12 --sample-seed 20261110 \
@@ -68,11 +68,33 @@ Approval and review notes are required for feedback-based RAGAS evaluation. Use 
 |---|---|---|
 | Components | Retrieval Recall@K, MRR and nDCG against known article labels; writer/verifier behavior with supplied evidence | [Rank metrics](scripts/baseline.py), [retrieval tests](tests/test_app_retriever.py), [generator contract fixtures](tests/test_app_generation.py). Controlled fixtures are not a generator quality benchmark. |
 | Pipeline | Selected context precision/recall, answer faithfulness and relevancy | [RAGAS runner](scripts/eval_ragas.py), measured on the pilot below. Reference text stays outside inference. |
-| Application | Reference-based correctness and completeness; citation validity; withholding and layout contracts; recorded timing/tokens/cache use | Correctness = RAGAS `FactualCorrectness(mode="f1")`; completeness = its `mode="recall"` proxy. Both are opt-in and not yet benchmarked. [Free saved-case checks](scripts/eval_suite.py), [API contracts](tests/test_app_api.py), [layout checks](frontend/tests/genui-contract.test.mjs) are implemented. |
+| Application | Reference-based correctness and completeness; citation validity; withholding and layout contracts; recorded timing/tokens/cache use | Correctness = RAGAS `FactualCorrectness(mode="f1")`; completeness = its `mode="recall"` proxy. Both are opt-in and have sampled results below. [Free saved-case checks](scripts/eval_suite.py), [API contracts](tests/test_app_api.py), [layout checks](frontend/tests/genui-contract.test.mjs) are implemented. |
 | Regression | Re-run a fixed case set, then inspect per-case differences | [Comparison CLI](scripts/eval_suite.py) rejects changed cohorts/references. Semantic comparisons also require matching judge settings and exclude scores flagged for review. |
 | Online | User feedback, reviewed regression cases, sampled judging and drift | Helpful/unhelpful votes and optional comments save the run for review and sync to LangSmith. Reviewed references can be exported for RAGAS. Sampled live judging and drift monitoring remain planned. |
 
 Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Existing origin/session, withholding and generated-component checks cover specific application contracts; they are not a comprehensive safety benchmark. Optional semantic metrics compare against available references, which may omit valid alternative answers.
+
+### Wider training run with prompt version 5
+
+The [saved result](evaluations/results/techqa_wide_v5.json) covers **15 of 30 planned training questions**. Generation stopped on a provider rate limit. The run produced **8 released answers, 2 withheld responses, 3 citation-format failures, 1 local quota-wait deadline and 1 provider rate-limit failure**. The selected evidence included the labeled article for **14/15** questions. All **8 released answers** passed citation-format checks.
+
+RAGAS used `openai/gpt-oss-20b` after a supported/unsupported faithfulness check scored 1.0/0.0. Answer generation used `openai/gpt-oss-120b`. Samples were selected separately for each metric to bound judging cost.
+
+| RAGAS metric | Raw mean | Scored cases | Review flags |
+|---|---:|---:|---:|
+| Context recall | 90.9% | 11 | 0 |
+| Context precision | 90.2% | 2 | 0 |
+| Faithfulness | 97.5% | 5 | 0 |
+| Answer relevancy | 93.0% | 3 | 0 |
+| Factual correctness against the reference | 42.6% | 5 | 1 |
+| Completeness against the reference | 53.4% | 5 | 1 |
+
+Three additional context-recall cases reached the judge request cap. Raw means retain flagged values. LangSmith leaves those flagged values pending review, so its displayed averages use fewer cases. Source inspection also found a reference-scope issue where a question asks for a bulletin link but its reference contains the full bulletin text. Correctness and completeness scores require review before being used as release criteria.
+
+Generation used **41 HTTP attempts / 206,804 reported tokens**. Judging used **120 attempts / 172,079 tokens**, plus **4 calibration calls / 3,757 tokens**. The runner reused **29 cached judge decisions**. Median answered-case batch time was **128.1 seconds**, including quota waits and local retrieval. These timings describe a serial batch. Reserved development questions remain available for a later release evaluation.
+
+The collector initially stopped on a local request deadline. That condition was corrected, existing cases were reused, and collection continued until a provider HTTP 429 response. Retryable failed attempts are now archived before replacement.
+
 
 ### Component measurements already recorded
 

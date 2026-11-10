@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1280" viewBox="0 0 1120 1280" role="img" aria-labelledby="title desc">
-<title id="title">TechQA RAG evaluation suite: components, pipeline, application, regression and planned monitoring</title>
-<desc id="desc">Implemented Python contract checks and RAGAS pipeline evaluation, optional factual correctness and completeness judges, paired regression reports, and planned sampled online monitoring. A three-case pilot is integration evidence, not a final benchmark.</desc>
+<title id="title">TechQA RAG evaluation suite with traces and reviewed feedback</title>
+<desc id="desc">Python contract checks, sampled RAGAS evaluation, user feedback, reviewed regression cases and planned live monitoring. Reserved release evaluation is pending.</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#94a3b8" stroke-width="1.5"/></marker></defs>
 <rect width="1120" height="1280" rx="18" fill="#f8fafc"/>
 <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif" fill="#172b3a">
@@ -10,9 +10,9 @@
 <rect x="36" y="133" width="80" height="26" rx="14" fill="#d6eee5" stroke="#d6eee5"/>
 <text x="48" y="151" font-size="12" font-weight="700" fill="#185646">SHIPPED</text>
 <rect x="160" y="133" width="216" height="26" rx="14" fill="#faedc9" stroke="#faedc9"/>
-<text x="172" y="151" font-size="12" font-weight="700" fill="#785514">OPT-IN / NOT BENCHMARKED</text>
+<text x="172" y="151" font-size="12" font-weight="700" fill="#785514">OPT-IN / SAMPLED</text>
 <rect x="420" y="133" width="80" height="26" rx="14" fill="#e8edf2" stroke="#e8edf2"/>
-<text x="432" y="151" font-size="12" font-weight="700" fill="#526476">PLANNED</text>
+<text x="432" y="151" font-size="12" font-weight="700" fill="#526476">PARTIAL</text>
 <rect x="36" y="181" width="1048" height="189" rx="14" fill="#e7f4ee" stroke="#b7d8c9"/>
 <text x="58" y="214" font-size="22" font-weight="700" fill="#334e60">01  Components — test one part at a time</text>
 <rect x="58" y="233" width="490" height="113" rx="14" fill="#f8fcfa" stroke="#c3ddd1"/>
@@ -57,14 +57,14 @@
 <text x="58" y="913" font-size="18" font-weight="400" fill="#334e60">Same cases + same references → paired outcome and score changes → inspect regressions.</text>
 <path d="M560 956 V979" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="36" y="989" width="1048" height="119" rx="14" fill="#f1f4f7" stroke="#aebdcc" stroke-dasharray="7 5"/>
-<text x="58" y="1023" font-size="22" font-weight="700" fill="#334e60">04  Online — sampled production monitoring</text>
+<text x="58" y="1023" font-size="22" font-weight="700" fill="#334e60">04  Online — feedback and run inspection</text>
 <rect x="929" y="1001" width="80" height="26" rx="14" fill="#e8edf2" stroke="#e8edf2"/>
-<text x="941" y="1019" font-size="12" font-weight="700" fill="#526476">PLANNED</text>
-<text x="58" y="1055" font-size="18" font-weight="400" fill="#334e60">Random samples + flagged requests · calibrated judges · feedback · drift monitoring</text>
-<text x="58" y="1082" font-size="17" font-weight="400" fill="#334e60">Operational logs exist today; Langfuse, online scoring and automated feedback do not.</text>
+<text x="941" y="1019" font-size="12" font-weight="700" fill="#526476">PARTIAL</text>
+<text x="58" y="1055" font-size="18" font-weight="400" fill="#334e60">LangSmith traces · user ratings · review notes · regression cases</text>
+<text x="58" y="1082" font-size="17" font-weight="400" fill="#334e60">Sampled live judging and drift monitoring are planned.</text>
 <path d="M560 1112 V1135" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="36" y="1145" width="1048" height="84" rx="14" fill="#e7f4ee" stroke="#b7d8c9"/>
 <text x="58" y="1177" font-size="21" font-weight="700" fill="#334e60">Review failures → curate training cases → rerun the fixed suite</text>
-<text x="58" y="1206" font-size="17" font-weight="400" fill="#334e60">Manual review is active. Automatic case promotion and self-improvement are planned.</text>
-<text x="36" y="1260" font-size="16" font-weight="400" fill="#637789">Evidence so far: 3-case tuning pilot. Final held-out quality and production readiness are not established.</text>
+<text x="58" y="1206" font-size="17" font-weight="400" fill="#334e60">Reviewed references are required before feedback cases enter RAGAS evaluation.</text>
+<text x="36" y="1260" font-size="16" font-weight="400" fill="#637789">Training-side evaluations are recorded in the README. Reserved release evaluation remains pending.</text>
 </g></svg>

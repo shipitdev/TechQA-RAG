@@ -140,3 +140,5 @@
 !/scripts/feedback_cases.py
 !/frontend/src/app/api/feedback/
 !/frontend/src/app/api/feedback/route.ts
+
+!/evaluations/results/techqa_wide_v5.json
