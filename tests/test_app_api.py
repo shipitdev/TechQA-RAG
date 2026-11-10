@@ -176,3 +176,16 @@ def test_real_generator_streams_activity_without_private_verifier_text(isolated_
     assert 'private_verifier_canary' not in response.text
     assert response.text.index('"stage": "verify"') < response.text.index('event: final')
     assert writer.on_progress is None
+
+
+def test_quota_error_explains_when_to_retry(isolated_root):
+    from rag_app.generation import GenerationError
+
+    class QuotaWriter:
+        def generate(self, question, sources):
+            raise GenerationError('quota', category='http_429')
+
+    client = TestClient(api.create_app(Search(), QuotaWriter()))
+    response = client.post('/ask', json={'question': 'How do I restart?'})
+    assert 'Retry after your provider quota resets' in response.text
+    assert 'event: final' not in response.text

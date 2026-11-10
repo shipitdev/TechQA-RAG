@@ -32,3 +32,20 @@ def test_saved_experiment_exports_contracts_without_model_calls():
         publish(Path("evaluations/fixtures/offline_demo.json"), client) == "experiment"
     )
     client.flush.assert_called_once()
+
+
+def test_dataset_identity_survives_changed_answers(tmp_path):
+    import json
+
+    source = Path("evaluations/fixtures/offline_demo.json")
+    payload = json.loads(source.read_text())
+    client = Mock()
+    client.read_dataset.return_value = SimpleNamespace(id="dataset")
+    client.list_examples.return_value = []
+    publish(source, client)
+    original = client.read_dataset.call_args.kwargs["dataset_name"]
+    payload["cases"][0]["response"] = "A changed output. [S1]"
+    changed = tmp_path / "changed.json"
+    changed.write_text(json.dumps(payload))
+    publish(changed, client)
+    assert client.read_dataset.call_args.kwargs["dataset_name"] == original

@@ -30,7 +30,7 @@ def trace_span(name, *, inputs=None, run_type="chain", **kwargs):
             run_type,
             inputs=inputs or {},
             client=get_client(),
-            project_name=os.getenv("LANGSMITH_PROJECT", "techqa-rag"),
+            project_name=os.getenv("LANGSMITH_PROJECT") or "techqa-rag",
             **kwargs,
         )
         run = span.__enter__()

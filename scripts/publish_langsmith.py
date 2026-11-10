@@ -16,8 +16,9 @@ def publish(directory, client, ragas=None):
     cases = load_cases(directory)
     report = build_report(cases, ragas)
     identity_file = directory / "manifest.json" if directory.is_dir() else directory
-    identity = hashlib.sha256(identity_file.read_bytes()).hexdigest()[:12]
-    name = "techqa-training-" + identity
+    identity = report["cohort_id"]
+    artifact_hash = hashlib.sha256(identity_file.read_bytes()).hexdigest()
+    name = "techqa-training-" + identity[:12]
     try:
         dataset = client.read_dataset(dataset_name=name)
     except LangSmithNotFoundError:
@@ -99,7 +100,8 @@ def publish(directory, client, ragas=None):
         max_concurrency=1,
         description="Saved canonical pipeline results replayed for inspection. No new inference or semantic judge calls.",
         metadata={
-            "collection_identity": identity,
+            "cohort_id": identity,
+            "collection_artifact_sha256": artifact_hash,
             "mode": "saved_result_replay",
             "split": "training_tuning",
         },

@@ -272,9 +272,19 @@ def create_app(retriever=None, generator=None, resolver=None):
                 write_metrics({'request_id': rid, 'status': result['status'], 'metrics': result['metrics']},private_trace)
                 completed = True
             except Exception as exc:
-                message = (('Groq billing or credits need attention. Check the Groq Console before retrying.' if exc.category == 'http_402' else 'Groq did not respond before the time limit. No answer was released.' if exc.category in {'transport_TimeoutError', 'transport_ReadTimeout'} else 'Answer generation failed; please retry.') if isinstance(exc, GenerationError) else
-                           'The request could not be completed safely. Check the product, version and local service readiness.' if isinstance(exc, ValueError) else
-                           'A dependency failed; please retry or check local service readiness.')
+                provider_messages = {
+                    'http_402': 'Groq billing or credits need attention. Check the Groq Console before retrying.',
+                    'http_429': 'Groq quota was reached. Retry after your provider quota resets.',
+                    'quota_deadline': 'Groq quota will not reset within this request. Try again after it resets.',
+                    'transport_TimeoutError': 'Groq did not respond before the time limit. No answer was released.',
+                    'transport_ReadTimeout': 'Groq did not respond before the time limit. No answer was released.',
+                }
+                if isinstance(exc, GenerationError):
+                    message = provider_messages.get(exc.category, 'Answer generation failed; please retry.')
+                elif isinstance(exc, ValueError):
+                    message = 'The request could not be completed safely. Check the product, version and local service readiness.'
+                else:
+                    message = 'A dependency failed; please retry or check local service readiness.'
                 if provider:
                     provider_calls = list(provider.usage)
                     provider.usage.clear()
@@ -284,8 +294,14 @@ def create_app(retriever=None, generator=None, resolver=None):
                 from langsmith import get_current_run_tree
                 root_run = get_current_run_tree()
                 if root_run:
-                    root_run.end(outputs={'status': 'error', 'metrics': metrics})
-                emit('error', {'message': message[:220], 'request_id': rid, 'metrics': metrics})
+                    root_run.end(outputs={'status': 'error', 'metrics': metrics}, error=metrics['error_category'])
+                trace_url = None
+                if root_run:
+                    try:
+                        trace_url = root_run.get_url()
+                    except Exception:
+                        pass
+                emit('error', {'message': message[:220], 'request_id': rid, 'metrics': metrics, 'langsmith_url': trace_url})
                 private_trace = {'question': question, 'retrieval': retrieved,
                                  'generation': list(getattr(generate, 'trace', []))}
                 write_metrics({'request_id': rid, 'status': 'error', 'metrics': metrics}, private_trace)

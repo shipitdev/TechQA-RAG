@@ -230,7 +230,7 @@ def collect(args):
                                       'http_attempts': list(provider.attempts), 'trace': list(generator.trace)}
                 case['langsmith_run_id'] = str(run.id) if run else None
                 if run:
-                    run.end(outputs={'status': case['status'], 'response': case['response'], 'sources': case['sources'], 'generation': {key: value for key, value in case['generation'].items() if key != 'trace'}})
+                    run.end(error=answer.get('error_type'), outputs={'status': case['status'], 'response': case['response'], 'sources': case['sources'], 'generation': {key: value for key, value in case['generation'].items() if key != 'trace'}})
                 save(path, case)
                 print(f"  saved {case['status']}; {len(case['sources'])} passages", flush=True)
                 if answer.get('error_type') in {'http_429', 'quota_deadline'}:

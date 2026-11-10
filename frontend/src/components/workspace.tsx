@@ -109,6 +109,7 @@ export default function Workspace() {
   const [retrievedSources, setRetrievedSources] = useState<VerifiedSource[]>([]);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
+  const [failedRun, setFailedRun] = useState<Pick<FinalEvent, "request_id" | "metrics" | "langsmith_url"> | null>(null);
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
   const [controller, setController] = useState<AbortController | null>(null);
   const [openUiMessage, setOpenUiMessage] = useState("");
@@ -131,6 +132,7 @@ export default function Workspace() {
       setStages([]);
       setRetrievedSources([]);
       setError("");
+    setFailedRun(null);
       setOpenUiMessage("");
     };
     window.addEventListener("pagehide", endSessionOnClose);
@@ -157,6 +159,7 @@ export default function Workspace() {
     setBusy(true);
     setElapsed(0);
     setError("");
+    setFailedRun(null);
     setOpenUiMessage("");
     setResult(null);
     setStages([]);
@@ -187,6 +190,7 @@ export default function Workspace() {
         } else if (type === "evidence" && Array.isArray(event.data.sources) && event.data.sources.every(validSource)) {
           setRetrievedSources(event.data.sources);
         } else if (type === "error") {
+          setFailedRun(event.data as FinalEvent);
           throw new Error(String(event.data.message || "The request failed."));
         } else if (type === "final") {
           final = event.data as FinalEvent;
@@ -227,6 +231,7 @@ export default function Workspace() {
   async function newSession() {
     if (busy) return;
     setError("");
+    setFailedRun(null);
     try {
       const response = await fetch("/api/session/end", { method: "POST", credentials: "include" });
       if (!response.ok) {
@@ -240,6 +245,7 @@ export default function Workspace() {
       setStages([]);
       setRetrievedSources([]);
       setError("");
+    setFailedRun(null);
       setOpenUiMessage("");
       inputRef.current?.focus();
     } catch (caught) {
@@ -260,6 +266,7 @@ export default function Workspace() {
   }
 
   const sources = result?.sources || retrievedSources;
+  const runDetails = result || failedRun;
   const showGeneratedUi = result?.status === "answered" && result.genUiValid && result.openui;
 
   return (
@@ -385,8 +392,8 @@ export default function Workspace() {
                 return <li key={source.id} id={`source-${encodeURIComponent(source.id)}`}><span className="source-index">{String(index + 1)}</span><div className="source-details"><div className="source-title-row">{href ? <a href={href} target="_blank" rel="noreferrer">{source.title}</a> : <strong>{source.title}</strong>}{href && <span className="external-mark" aria-hidden="true">↗</span>}</div><p className="source-location">{source.document_id ? `Document ${source.document_id}` : "Knowledge base excerpt"}{source.chunk_id ? ` · ${source.chunk_id}` : ""}</p><details><summary>View excerpt</summary><blockquote>{source.text}</blockquote></details></div></li>;
               })}</ol>
             ) : <div className="sources-empty"><span aria-hidden="true">⌕</span><p>Retrieved excerpts appear here during search. Open them to inspect the evidence.</p></div>}
-            {safeUrl(result?.langsmith_url) && <a className="trace-link" href={safeUrl(result?.langsmith_url)} target="_blank" rel="noreferrer">Inspect this run in LangSmith ↗</a>}
-            {result?.metrics && <details className="run-metrics"><summary>Run details</summary><dl>{Object.entries(result.metrics).map(([key, value]) => <div key={key}><dt>{label(key)}</dt><dd>{value !== null && typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}</dd></div>)}</dl></details>}
+            {safeUrl(runDetails?.langsmith_url) && <a className="trace-link" href={safeUrl(runDetails?.langsmith_url)} target="_blank" rel="noreferrer">Inspect this run in LangSmith ↗</a>}
+            {runDetails?.metrics && <details className="run-metrics"><summary>Run details</summary><dl>{Object.entries(runDetails.metrics).map(([key, value]) => <div key={key}><dt>{label(key)}</dt><dd>{value !== null && typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}</dd></div>)}</dl></details>}
           </aside>
         </div>
       </section>
