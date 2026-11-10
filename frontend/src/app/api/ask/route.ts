@@ -1,8 +1,8 @@
+import { isAllowedOrigin } from "@/lib/request-origin";
 const MAX_QUESTION_LENGTH = 8_000;
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return Response.json({ message: "Cross-origin requests are not allowed." }, { status: 403 });
+  if (!isAllowedOrigin(request)) return Response.json({ message: "Cross-origin requests are not allowed." }, { status: 403 });
   if (Number(request.headers.get("content-length") || 0) > 64_000) return Response.json({ message: "Request body is too large." }, { status: 413 });
   let input: unknown;
   try {

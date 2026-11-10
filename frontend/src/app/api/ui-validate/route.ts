@@ -1,11 +1,11 @@
+import { isAllowedOrigin } from "@/lib/request-origin";
 import { inspectUi, type VerifiedSource } from "@/lib/verified-ui-contract";
 
 const MAX_BODY = 128_000;
 const MAX_SOURCES = 32;
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return Response.json({ valid: false, message: "Cross-origin requests are not allowed." }, { status: 403 });
+  if (!isAllowedOrigin(request)) return Response.json({ valid: false, message: "Cross-origin requests are not allowed." }, { status: 403 });
   const length = Number(request.headers.get("content-length") || 0);
   if (length > MAX_BODY) return Response.json({ valid: false, message: "UI payload is too large." }, { status: 413 });
   let raw: string;
