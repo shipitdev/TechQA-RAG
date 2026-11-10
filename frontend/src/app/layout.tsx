@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
+
+const geist = localFont({ src: "./fonts/geist-latin.woff2", variable: "--font-geist", display: "swap" });
+const mono = localFont({ src: "./fonts/geist-mono-latin.woff2", variable: "--font-geist-mono", display: "swap" });
 import "./globals.css";
 import "./genui.css";
 
@@ -14,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
+      <body className={`${geist.variable} ${mono.variable}`}>{children}</body>
     </html>
   );
 }
