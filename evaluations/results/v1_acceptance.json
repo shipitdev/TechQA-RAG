@@ -1,0 +1,139 @@
+{
+  "date": "2026-11-10",
+  "scope": "Local Mac V1, single API worker, local Docker Qdrant. Training tuning and targeted acceptance checks.",
+  "context_replay": {
+    "n": 97,
+    "before": 80,
+    "after": 83,
+    "gains": 3,
+    "losses": 0,
+    "measure": "At least 90% longest contiguous normalized reference-word-run coverage within the annotated article. Saved candidates and reranker scores. References used only for scoring."
+  },
+  "lifecycle": {
+    "documents": 28482,
+    "chunks": 99697,
+    "embedded_changed_chunks": 2,
+    "reused_vectors": 99695,
+    "add_update_delete": true,
+    "unchanged_update_embeds_zero": true,
+    "activation_and_rollback": true,
+    "restored_full_membership_validated": true,
+    "restored_exact_top10_parity_queries": 3,
+    "missing_activation_fails_closed": true,
+    "explicit_activation_recovers_missing_pointer": true
+  },
+  "verifier_canaries": {
+    "passed": 4,
+    "total": 4,
+    "cases": [
+      {
+        "id": "negative_feature",
+        "pass": true
+      },
+      {
+        "id": "wrong_version",
+        "pass": true
+      },
+      {
+        "id": "table_exclusion",
+        "pass": true
+      },
+      {
+        "id": "missing_required_step",
+        "pass": true
+      }
+    ]
+  },
+  "live_targeted_cases": [
+    {
+      "question_id": "TRAIN_Q063",
+      "outcome": "answered",
+      "generation_seconds": 110.09,
+      "stages": [
+        "write",
+        "repair",
+        "verify"
+      ]
+    },
+    {
+      "question_id": "TRAIN_Q046",
+      "outcome": "insufficient_evidence",
+      "generation_seconds": 43.92,
+      "stages": [
+        "write"
+      ]
+    },
+    {
+      "question_id": "TRAIN_Q019",
+      "outcome": "needs_clarification",
+      "generation_seconds": 44.34,
+      "stages": [
+        "write"
+      ]
+    },
+    {
+      "question_id": "TRAIN_Q037",
+      "outcome": "insufficient_evidence",
+      "generation_seconds": 46.18,
+      "stages": [
+        "write"
+      ]
+    }
+  ],
+  "live_usage": {
+    "http_attempts": 15,
+    "http_200": 15,
+    "reported_tokens": 62248,
+    "attempt_cap": 18,
+    "token_cap": 70000,
+    "includes": "First live pass, four canaries, and final-prompt generation on the four saved new contexts."
+  },
+  "browser": {
+    "controlled_response_fixture": true,
+    "genui": true,
+    "source_excerpt": true,
+    "structured_run_details": true,
+    "regeneration": true,
+    "session_clear": true,
+    "console_errors_after_fix": 0
+  },
+  "operating_bounds": {
+    "request_deadline_seconds": 180,
+    "queue_wait_seconds": 30,
+    "admitted_requests": 5,
+    "session_idle_seconds": 1800,
+    "query_cache_entries": 2048,
+    "pair_cache_entries": 50000,
+    "metrics_max_bytes": 104857600,
+    "metrics_retention_days": 7,
+    "opt_in_private_trace_files": 50,
+    "opt_in_private_trace_max_bytes": 134217728
+  },
+  "limits": [
+    "Targeted cases and canaries do not establish full answer accuracy.",
+    "Q046 and Q037 still withhold. Q019 asks for clarification.",
+    "Browser rendering uses a controlled fixture. Live checks cover local retrieval and separate generation checks.",
+    "Admission is checked with controlled concurrent requests. Broader traffic/load benchmarking remains a later milestone.",
+    "Historical RAGAS scores retain their judge review flags. Held-out evaluation remains reserved."
+  ],
+  "verification": {
+    "local_tests": {
+      "passed": 141,
+      "skipped": 1,
+      "subtests": 3
+    },
+    "clean_public_copy": {
+      "passed": 126,
+      "skipped": 1,
+      "subtests": 3
+    },
+    "focused_ragas_environment": {
+      "passed": 9
+    },
+    "frontend_contract_tests": 8,
+    "typecheck": true,
+    "lint": true,
+    "production_build": true,
+    "test_count_note": "Suites overlap. The skipped local test passes in the separate RAGAS environment."
+  }
+}

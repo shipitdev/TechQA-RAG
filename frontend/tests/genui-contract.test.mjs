@@ -35,3 +35,24 @@ test('prompt selects structures by content and disallows invented operational fa
  assert.ok(prompt.includes('do not fabricate extra sections'));
  assert.ok(prompt.includes('must not be hidden'));
 });
+
+
+test('browser origin follows the request host when Next normalizes localhost',async()=>{
+ const {isAllowedOrigin}=await import('../src/lib/request-origin.ts');
+ const original=process.env.APP_ORIGIN;
+ delete process.env.APP_ORIGIN;
+ try {
+  const request=(origin,host='127.0.0.1:3000')=>new Request('http://localhost:3000/api/ui-validate',{headers:{origin,host}});
+  assert.equal(isAllowedOrigin(request('http://127.0.0.1:3000')),true);
+  assert.equal(isAllowedOrigin(request('https://evil.example')),false);
+  assert.equal(isAllowedOrigin(request('https://127.0.0.1:3000')),false);
+  assert.equal(isAllowedOrigin(request('invalid-origin')),false);
+  assert.equal(isAllowedOrigin(new Request('http://localhost:3000/api/ui-validate')),true);
+  process.env.APP_ORIGIN='https://demo.example';
+  assert.equal(isAllowedOrigin(request('http://127.0.0.1:3000')),false);
+  assert.equal(isAllowedOrigin(request('https://demo.example')),true);
+ } finally {
+  if(original===undefined)delete process.env.APP_ORIGIN;
+  else process.env.APP_ORIGIN=original;
+ }
+});

@@ -131,6 +131,16 @@ class ContextSelectionTests(unittest.TestCase):
         self.assertEqual(result['diagnostics']['quota'], 2)
         self.assertLessEqual(result['tokens'], 8)
 
+    def test_document_lead_survives_table_crowding(self):
+        docs = {'d': {'text': 'This update supports versions 1 and 2.\n\n| Download | Size |\n| --- | --- |\n| Version 1 | 900 |'}}
+        cut = docs['d']['text'].index('|')
+        chunks = {'lead': {'document_id': 'd', 'start': 0, 'end': cut, 'structure': 'prose'},
+                  'table': {'document_id': 'd', 'start': cut, 'end': len(docs['d']['text']), 'structure': 'table'}}
+        result = pack_evidence(['table', 'lead'], chunks, docs, Tokenizer(), budget=40, per_doc=1)
+        self.assertIn('supports versions 1 and 2', result['text'])
+        self.assertEqual(result['diagnostics']['document_leads'], 1)
+
+
 
 if __name__ == '__main__':
     unittest.main()

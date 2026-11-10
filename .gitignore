@@ -109,3 +109,13 @@
 .DS_Store
 .env*
 !/.env.example
+
+# V1 operational lifecycle and acceptance checks.
+!/rag_app/indexes.py
+!/rag_app/observability.py
+!/scripts/manage_index.py
+!/tests/test_index_lifecycle.py
+!/tests/test_observability.py
+!/tests/test_v1_acceptance.py
+!/frontend/src/lib/request-origin.ts
+!/evaluations/results/v1_acceptance.json

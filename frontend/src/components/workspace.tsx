@@ -13,7 +13,7 @@ type FinalEvent = {
   answer?: string;
   sources?: VerifiedSource[];
   openui?: string;
-  metrics?: Record<string, string | number | boolean | null>;
+  metrics?: Record<string, unknown>;
 };
 type Result = FinalEvent & { question: string; runId: number; genUiValid?: boolean };
 type ServiceStatus = { api: string; presentation_status: string };
@@ -365,7 +365,7 @@ export default function Workspace() {
                 return <li key={source.id} id={`source-${encodeURIComponent(source.id)}`}><span className="source-index">{String(index + 1).padStart(2, "0")}</span><div className="source-details"><div className="source-title-row">{href ? <a href={href} target="_blank" rel="noreferrer">{source.title}</a> : <strong>{source.title}</strong>}{href && <span className="external-mark" aria-hidden="true">↗</span>}</div><p className="source-location">{source.document_id ? `Document ${source.document_id}` : "Knowledge base excerpt"}{source.chunk_id ? ` · ${source.chunk_id}` : ""}</p><details><summary>View excerpt</summary><blockquote>{source.text}</blockquote></details></div></li>;
               })}</ol>
             ) : <div className="sources-empty"><span aria-hidden="true">⌕</span><p>Sources are attached to verified answers so you can inspect the evidence.</p></div>}
-            {result?.metrics && <details className="run-metrics"><summary>Run details</summary><dl>{Object.entries(result.metrics).map(([key, value]) => <div key={key}><dt>{label(key)}</dt><dd>{String(value ?? "—")}</dd></div>)}</dl></details>}
+            {result?.metrics && <details className="run-metrics"><summary>Run details</summary><dl>{Object.entries(result.metrics).map(([key, value]) => <div key={key}><dt>{label(key)}</dt><dd>{value !== null && typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}</dd></div>)}</dl></details>}
           </aside>
         </div>
       </section>

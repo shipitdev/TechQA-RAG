@@ -16,7 +16,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from rag_app.state import SessionStore, AnswerCache
-from rag_app.generation import MODEL, GroqREST, AnswerGenerator, GenerationError
+from rag_app.observability import persist_run
+from rag_app.generation import MODEL, PROMPT_VERSION, GroqREST, AnswerGenerator, GenerationError
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / '.env')
@@ -43,6 +44,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                  ROOT / 'data/tokenizers/bge_wordpiece/source.json',
                  ROOT / 'models-embeddings.json']
         files += sorted((ROOT / 'rag_app').glob('*.py'))
+        files += [ROOT / 'scripts/context_selection.py', ROOT / 'data/indexes/active.json']
         library = ROOT / 'frontend/src/lib'
         if library.is_dir():
             files += sorted(path for path in library.rglob('*') if path.is_file())
@@ -53,20 +55,16 @@ def create_app(retriever=None, generator=None, resolver=None):
                 digest.update(path.read_bytes())
         return digest.hexdigest()
 
-    def write_metrics(record):
-        try:
-            metrics_dir = Path(os.getenv('RAG_METRICS_DIR', str(ROOT / 'data/app/metrics')))
-            metrics_dir.mkdir(parents=True, exist_ok=True)
-            cutoff = time.time() - 7 * 86400
-            for old in metrics_dir.glob('*.jsonl'):
-                if old.stat().st_mtime < cutoff:
-                    old.unlink()
-            with (metrics_dir / (time.strftime('%Y-%m-%d') + '.jsonl')).open('a') as f:
-                f.write(json.dumps(record) + '\n')
-        except OSError:
-            pass
+    def write_metrics(record, private_trace=None):
+        persist_run(ROOT,record,private_trace)
 
     def dependencies():
+        if runtime['retriever'] is not None and retriever is None:
+            active = ROOT/'data/indexes/active.json'
+            current = json.loads(active.read_text()) if active.exists() else None
+            if getattr(runtime['retriever'],'index_manifest',None) != current:
+                runtime['retriever'].close()
+                runtime['retriever'] = None
         if runtime['retriever'] is None:
             from rag_app.retriever import Retriever
             runtime['retriever'] = Retriever()
@@ -93,16 +91,16 @@ def create_app(retriever=None, generator=None, resolver=None):
         if not (os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')):
             raise HTTPException(503, 'Groq API key is not configured')
         try:
-            from qdrant_client import QdrantClient
-            from scripts.import_qdrant import COLLECTION
-            if not (ROOT / 'data/source.sqlite3').exists():
-                raise ValueError('source import required')
-            info = QdrantClient(url=os.getenv('QDRANT_URL', 'http://127.0.0.1:6333'), timeout=3).get_collection(COLLECTION)
-            if info.points_count != 99697:
-                raise ValueError('collection count mismatch')
+            from rag_app.retriever import Retriever
+            check = Retriever()
+            try:
+                check.check_assets()
+                identity = check.index_identity()
+            finally:
+                check.close()
         except Exception:
             raise HTTPException(503, 'Qdrant/source import is not ready') from None
-        return {'status': 'ready', 'presentation': 'direct_groq', 'models': 'lazy-loaded on first request'}
+        return {'status': 'ready', 'presentation': 'direct_groq', 'models': 'lazy-loaded on first request', 'index': identity}
 
     @app.post('/session/end')
     def end(request: Request):
@@ -156,12 +154,18 @@ def create_app(retriever=None, generator=None, resolver=None):
             provider = None
             provider_calls = []
             completed = False
+            private_trace = None
+            generate = None
+            retrieved = None
+            question = body.question
             try:
                 emit('stage', {'stage': 'queued'})
                 acquired = serial.acquire(timeout=30)
                 if not acquired: raise TimeoutError()
                 if stopped(): return
                 retrieve, generate = dependencies()
+                if hasattr(generate, "trace"):
+                    generate.trace.clear()
                 if stopped(): return
                 provider = runtime.get('provider')
                 if provider:
@@ -192,7 +196,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                             'pipeline': pipeline_version(),
                             'index': retrieve.index_identity() if hasattr(retrieve, 'index_identity') else 'injected_test_index',
                             'model': MODEL,
-                            'prompt': 'strict_v2', 'generation': {'provider': 'groq', 'reasoning_effort': 'low', 'max_output_tokens': 1500}}
+                            'prompt': PROMPT_VERSION, 'generation': {'provider': 'groq', 'reasoning_effort': 'low', 'max_output_tokens': 1500}}
                 cached = None if regen or result else answers.get(session.id, identity, session_expires_at=session.expires_at)
                 if cached:
                     result = dict(cached)
@@ -203,12 +207,32 @@ def create_app(retriever=None, generator=None, resolver=None):
                     retrieved = retrieve.retrieve(question)
                     if stopped(): return
                     sources = retrieved['sources']
+                    generation_started = time.monotonic()
                     emit('stage', {'stage': 'writing_and_verifying'})
                     if stopped(): return
                     answer = generate.generate(question, sources) if sources else {'status': 'insufficient_evidence', 'answer': 'No supporting evidence was retrieved.', 'citations': []}
                     if stopped(): return
+                    generation_ms = round((time.monotonic()-generation_started)*1000,2)
+                    trace = list(getattr(generate,'trace',[]))
+                    private_trace = {'question':question,'retrieval':retrieved,'generation':trace}
                     answer = {key: answer[key] for key in ('status', 'answer', 'citations') if key in answer}
-                    result = {**answer, 'sources': sources, 'metrics': {**retrieved.get('metrics', {}), 'context_tokens': retrieved.get('context_tokens'), 'answer_cache_hit': False, 'regenerated': regen}}
+                    generation_stages = [
+                        {'stage': step['stage'], 'milliseconds': step.get('milliseconds'),
+                         'verdict': step.get('result', {}).get('verdict'),
+                         'supported': step.get('result', {}).get('supported'),
+                         'unsupported_claim_count': len(step.get('result', {}).get('unsupported_claims', []))}
+                        for step in trace
+                    ]
+                    result = {
+                        **answer, 'sources': sources,
+                        'metrics': {
+                            **retrieved.get('metrics', {}),
+                            'context_tokens': retrieved.get('context_tokens'),
+                            'generation_ms': generation_ms, 'index': identity['index'],
+                            'prompt_version': PROMPT_VERSION, 'generation_stages': generation_stages,
+                            'answer_cache_hit': False, 'regenerated': regen,
+                        },
+                    }
                     if result['status'] == 'answered' and (os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')) and os.getenv('ENABLE_GENUI', '1') == '1' and runtime.get('provider'):
                         if stopped(): return
                         emit('stage', {'stage': 'validating_presentation'})
@@ -226,21 +250,25 @@ def create_app(retriever=None, generator=None, resolver=None):
                 if provider:
                     provider_calls = list(provider.usage)
                     result['metrics']['provider_calls'] = provider_calls
+                    result['metrics']['http_attempts'] = list(provider.attempts)
                     provider.usage.clear()
                 emit('final', result)
-                write_metrics({'request_id': rid, 'status': result['status'], 'metrics': result['metrics']})
+                write_metrics({'request_id': rid, 'status': result['status'], 'metrics': result['metrics']},private_trace)
                 completed = True
             except Exception as exc:
                 message = (('Groq billing or credits need attention. Check the Groq Console before retrying.' if exc.category == 'http_402' else 'Groq did not respond before the time limit. No answer was released.' if exc.category in {'transport_TimeoutError', 'transport_ReadTimeout'} else 'Answer generation failed; please retry.') if isinstance(exc, GenerationError) else
-                           str(exc) if isinstance(exc, ValueError) else
+                           'The request could not be completed safely. Check the product, version and local service readiness.' if isinstance(exc, ValueError) else
                            'A dependency failed; please retry or check local service readiness.')
                 if provider:
                     provider_calls = list(provider.usage)
                     provider.usage.clear()
                 metrics = {'provider_calls': provider_calls,
+                           'http_attempts': list(provider.attempts) if provider else [],
                            'failed_provider_calls': int(isinstance(exc, GenerationError)), 'error_category': exc.category if isinstance(exc, GenerationError) else type(exc).__name__}
                 emit('error', {'message': message[:220], 'request_id': rid, 'metrics': metrics})
-                write_metrics({'request_id': rid, 'status': 'error', 'metrics': metrics})
+                private_trace = {'question': question, 'retrieval': retrieved,
+                                 'generation': list(getattr(generate, 'trace', []))}
+                write_metrics({'request_id': rid, 'status': 'error', 'metrics': metrics}, private_trace)
                 completed = True
             finally:
                 if provider:

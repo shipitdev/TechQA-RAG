@@ -1,6 +1,7 @@
 export async function GET() {
   try {
-    const response = await fetch("http://127.0.0.1:8000/health/ready", { cache: "no-store" });
+    const upstream = new URL("health/ready", process.env.RAG_API_URL || "http://127.0.0.1:8000/ask");
+    const response = await fetch(upstream, { cache: "no-store", signal: AbortSignal.timeout(5_000) });
     if (!response.ok) throw new Error("Readiness check failed");
     const body = await response.json() as { presentation_status?: unknown; presentation?: unknown };
     const presentation = body.presentation_status ?? body.presentation;
