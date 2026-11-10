@@ -90,10 +90,31 @@ def rerank_candidates(ranked_ids, chunks, docs, ce_scores, depth=20):
 
 
 def pack_evidence(ranked_ids, chunks, docs, tokenizer, budget=4096, per_doc=5, max_docs=8,
-                  skip_metadata=True, include_notes=True):
+                  skip_metadata=True, include_notes=True, include_document_leads=True):
     if budget < 1 or per_doc < 1 or max_docs < 1:
         raise ValueError('budget, per_doc and max_docs must be positive')
-    passages, dropped = [], {'duplicate': 0, 'metadata': 0, 'quota': 0, 'budget': 0}
+    passages, dropped = [], {'duplicate': 0, 'metadata': 0, 'quota': 0, 'budget': 0, 'document_leads': 0}
+    ranked_ids = list(ranked_ids)
+    if include_document_leads:
+        # A ranked table/late passage needs its retrieved opening prose for applicability.
+        leads = {}
+        for cid in ranked_ids:
+            c = _chunk(chunks, cid)
+            if (c['start'] == 0 and c.get('structure') == 'prose' and
+                    not is_supporting_metadata(c, docs) and
+                    len(tokenizer.encode(_body(c, docs), add_special_tokens=False).ids) <= 768):
+                leads[c['document_id']] = cid
+        ordered, seen = [], set()
+        for cid in ranked_ids:
+            lead = leads.get(_chunk(chunks, cid)['document_id'])
+            if lead is not None and lead not in seen and lead != cid:
+                ordered.append(lead)
+                seen.add(lead)
+                dropped['document_leads'] += 1
+            if cid not in seen:
+                ordered.append(cid)
+                seen.add(cid)
+        ranked_ids = ordered
 
     def render(rows):
         return '\n\n'.join(f"[{p['document_id']}:{p['start']}-{p['end']}]\n" +

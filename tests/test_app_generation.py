@@ -11,7 +11,7 @@ class AnswerGeneratorTests(unittest.TestCase):
     evidence = [{"id": "S1", "text": "Use command X for version 2."}]
     answer = {"status": "answered", "answer": "Use X [S1].", "citations": ["S1"]}
     complete = {"verdict": "complete", "supported": True, "complete": True,
-                "missing_steps": [], "version_conflicts": [], "findings": []}
+                "missing_steps": [], "version_conflicts": [], "findings": [], "unsupported_claims": []}
 
     def run_with(self, results):
         calls = []
@@ -27,6 +27,24 @@ class AnswerGeneratorTests(unittest.TestCase):
         result, calls = self.run_with([self.answer.copy(), self.complete.copy()])
         self.assertEqual(result, self.answer)
         self.assertEqual(len(calls), 2)
+
+    def test_verifier_claim_findings_override_optimistic_booleans(self):
+        verdict = {**self.complete, "unsupported_claims": ["Download label does not prove version 2 is excluded."]}
+        result, calls = self.run_with([self.answer.copy(), verdict,
+            {"status":"insufficient_evidence","answer":"","citations":[]}])
+        self.assertEqual(result["status"], "insufficient_evidence")
+        self.assertEqual(len(calls), 3)
+
+    def test_specific_unsupported_claim_gets_one_repair_and_must_be_reverified(self):
+        rejected = {**self.complete, "verdict":"evidence_gap", "supported":False,
+                    "unsupported_claims":["Unjustified version exclusion"]}
+        revised = {**self.answer, "answer":"Use the explicitly supported version 2 procedure [S1]."}
+        result,calls = self.run_with([self.answer.copy(),rejected,revised,self.complete.copy()])
+        self.assertEqual(result,revised)
+        self.assertEqual(len(calls),4)
+        result,calls = self.run_with([self.answer.copy(),rejected,revised,rejected])
+        self.assertEqual(result["status"],"insufficient_evidence")
+        self.assertEqual(len(calls),4)
 
     def test_gap_withholds_without_repair(self):
         gap = {**self.complete, "verdict": "evidence_gap", "supported": False, "complete": False}
