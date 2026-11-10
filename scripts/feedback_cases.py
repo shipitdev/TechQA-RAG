@@ -69,7 +69,7 @@ def export_cases(root, output):
         )
     if not cases:
         raise ValueError("No approved feedback cases. Review pending records first.")
-    output.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True, mode=0o700)
     manifest = {
         "kind": "reviewed_user_feedback",
         "question_ids": [c["question_id"] for c in cases],
@@ -83,9 +83,12 @@ def export_cases(root, output):
             "Use a new export directory to preserve the saved evaluation version"
         )
     for case in cases:
-        save(output / (case["question_id"] + ".json"), case)
+        path = output / (case["question_id"] + ".json")
+        save(path, case)
+        path.chmod(0o600)
     save(output / "manifest.json", manifest)
     save(output / "completed.json", {"cases": cases})
+    (output / "completed.json").chmod(0o600)
     return len(cases)
 
 
