@@ -19,6 +19,28 @@ Question → Gemma embedding → Qdrant exact search → BGE reranking
 - **Sessions:** recent conversation plus a summary, current-session memory, exact answer caching and an explicit regeneration bypass.
 - **Evaluation:** an offline RAGAS runner scores saved evidence and released answers. Judge decisions and local query embeddings are cached; withheld responses and evaluation errors stay visible.
 
+## Inspect a run in LangSmith
+
+Add `LANGSMITH_API_KEY` to the server's `.env`. The default project is `techqa-rag`. Set `LANGSMITH_TRACING=false` to disable export. Traces contain questions, retrieved passages, private drafts and verification decisions, so keep this project private.
+
+Each question has a parent trace with child steps for query embedding, exact search, reranking, context selection and model calls. Inspect timings, actual token usage, cache hits, source passages, repair attempts and the released outcome. The answer workspace links to its trace. Local diagnostic logs continue to work when tracing is disabled or export fails.
+
+The workspace streams actual activity and retrieved excerpts. Verified answers and checked OpenUI layouts appear after their release checks. The run history remains available after completion. Desktop uses a compact navigation rail, while smaller screens stack the answer and evidence.
+
+For developers and coding agents, `/ask` remains a server-sent event endpoint. `stage` events describe activity, `evidence` carries retrieved `sources`, `final` carries the approved outcome and `error` carries a safe error category/message. `done` closes the run. Final statuses are `answered`, `needs_clarification` and `insufficient_evidence`. Existing exact-cache, session, cancellation and regeneration behavior remains covered by tests.
+
+Collect a fixed random training sample with a hard HTTP-attempt cap. Quota failures stop collection and are retried when the same unchanged run resumes. Completed cases are saved after each question, with a `completed.json` snapshot for inspection.
+
+```bash
+python -m scripts.eval_ragas collect --limit 12 --sample-seed 20261110 \
+  --max-requests 18 --output data/ragas/review
+python -m scripts.publish_langsmith --cases data/ragas/review/completed.json
+```
+
+Publishing replays saved outputs into a LangSmith experiment with response status, selected-reference-article presence and citation-format checks. It makes **zero new model calls**. Add `--ragas path/to/matching-report.json` to publish existing semantic scores too. RAGAS judging remains a separate, explicitly budgeted command below. Reviewed or failed judge results retain their flags.
+
+The [November 10 observability batch](evaluations/results/observability_v1.json) selected **12 training questions**. Retrieval selected the labeled article for **11/12**. **3 answers** were released and passed citation-format checks. **9 provider quota failures** prevented completion. The run used **15 HTTP attempts and 33,230 reported tokens**. This batch establishes dashboard visibility and exposes a quota-handling issue, which is now covered by a stop-on-quota regression test. New semantic RAGAS scores await available provider quota.
+
 ## Evaluation suite
 
 ![Evaluation layers: components, pipeline, application, regression and planned monitoring](evaluations/overview.svg)

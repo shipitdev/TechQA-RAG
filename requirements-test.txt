@@ -10,3 +10,5 @@ ragas==0.4.3
 openai==2.54.0
 instructor==1.17.0
 langchain-community==0.4.1
+
+langsmith==0.14.17

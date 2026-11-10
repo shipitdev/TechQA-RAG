@@ -8,6 +8,7 @@ import importlib.metadata
 import json
 import math
 import os
+import random
 from pathlib import Path
 import time
 
@@ -150,6 +151,8 @@ def summarize(rows):
 
 
 def collect(args):
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
     from rag_app.retriever import Retriever
     from rag_app.generation import AnswerGenerator, GroqREST, GenerationError
     split_path = ROOT / 'data/splits/techqa_v1.json'
@@ -161,9 +164,20 @@ def collect(args):
     selected = select_questions(json.loads((base / 'training_Q_A.json').read_text()), split['tuning_ids'], args.limit)
     if not selected:
         raise ValueError('No answerable training cases')
+    seed = getattr(args, 'sample_seed', None)
+    if seed is not None:
+        selected = select_questions(json.loads((base / 'training_Q_A.json').read_text()), split['tuning_ids'], len(split['tuning_ids']))
+        random.Random(seed).shuffle(selected)
+        selected = selected[:args.limit]
     original_docs = json.loads((base / 'training_dev_technotes.json').read_text())
     retriever = Retriever()
-    provider = GroqREST()
+    import httpx
+    from rag_app.tracing import trace_span, get_client
+    budget = RequestBudget(getattr(args, "max_requests", 18))
+    def bounded_post(*args, **kwargs):
+        budget.consume()
+        return httpx.post(*args, **kwargs)
+    provider = GroqREST(post=bounded_post)
     generator = AnswerGenerator(provider.json_call)
     identity = {'split_sha256': sha256(split_path), 'source_hashes': split['source_hashes'],
                 'index': retriever.index_identity(), 'model': provider.model,
@@ -171,7 +185,7 @@ def collect(args):
                 'scope': 'standalone canonical answer; no memory, answer cache, UI or reference labels in inference'}
     args.output.mkdir(parents=True, exist_ok=True)
     manifest = {'identity': identity, 'question_ids': [q['QUESTION_ID'] for q in selected],
-                'selection': 'first sorted answerable IDs in saved tuning split; no outcome selection',
+                'selection': ('seeded random answerable training tuning sample; seed=' + str(seed)) if seed is not None else 'first sorted answerable IDs in saved tuning split; no outcome selection',
                 'excluded_original_negatives': sum(q['ANSWERABLE'] != 'Y' for q in
                     json.loads((base / 'training_Q_A.json').read_text()) if q['QUESTION_ID'] in split['tuning_ids'])}
     old_manifest = args.output / 'manifest.json'
@@ -182,27 +196,52 @@ def collect(args):
         for q in selected:
             path = args.output / (q['QUESTION_ID'] + '.json')
             if path.exists():
-                print(q['QUESTION_ID'] + ': saved case reused', flush=True)
-                continue
+                previous = json.loads(path.read_text())
+                if previous.get('generation', {}).get('error_type') not in {'http_429', 'quota_deadline'}:
+                    print(q['QUESTION_ID'] + ': saved case reused', flush=True)
+                    continue
+            if budget.exhausted or budget.sent >= budget.limit:
+                print('HTTP budget reached; remaining cases can resume later', flush=True)
+                break
+            generator.trace.clear()
             question = q['QUESTION_TITLE'] + '\n' + q['QUESTION_TEXT']
             print(q['QUESTION_ID'] + ': retrieval → writer → verifier', flush=True)
-            started = time.perf_counter()
-            retrieved = retriever.retrieve(question)
-            provider.usage.clear()
-            provider.attempts.clear()
-            provider.deadline = time.monotonic() + 180
-            try:
-                answer = generator.generate(question, retrieved['sources'])
-            except GenerationError as exc:
-                answer = {'status': 'generation_error', 'answer': '', 'error_type': exc.category}
-            case = make_case(q, original_docs[q['DOCUMENT']]['text'], retrieved, answer)
-            case['generation'] = {'seconds': time.perf_counter() - started,
-                                  'provider_calls': list(provider.usage), 'error_type': answer.get('error_type'),
-                                  'http_attempts': list(provider.attempts), 'trace': list(generator.trace)}
-            save(path, case)
-            print(f"  saved {case['status']}; {len(case['sources'])} passages", flush=True)
+            with trace_span('TechQA evaluation', inputs={'question': question}, metadata={'question_id': q['QUESTION_ID'], 'evaluation': True, 'split': 'training_tuning', 'model': provider.model, 'index': identity['index']}) as run:
+                started = time.perf_counter()
+                with trace_span('Retrieve and select evidence', inputs={'question': question}) as retrieval_run:
+                    retrieved = retriever.retrieve(question)
+                    if retrieval_run:
+                        retrieval_run.end(outputs=retrieved)
+                provider.usage.clear()
+                provider.attempts.clear()
+                provider.deadline = time.monotonic() + 180
+                try:
+                    answer = generator.generate(question, retrieved['sources'])
+                except BudgetExceeded:
+                    if run:
+                        run.end(outputs={"status": "budget_exhausted"})
+                    print("HTTP budget reached during this case; case will retry on resume", flush=True)
+                    break
+                except GenerationError as exc:
+                    answer = {'status': 'generation_error', 'answer': '', 'error_type': exc.category}
+                case = make_case(q, original_docs[q['DOCUMENT']]['text'], retrieved, answer)
+                case['generation'] = {'seconds': time.perf_counter() - started,
+                                      'provider_calls': list(provider.usage), 'error_type': answer.get('error_type'),
+                                      'http_attempts': list(provider.attempts), 'trace': list(generator.trace)}
+                case['langsmith_run_id'] = str(run.id) if run else None
+                if run:
+                    run.end(outputs={'status': case['status'], 'response': case['response'], 'sources': case['sources'], 'generation': {key: value for key, value in case['generation'].items() if key != 'trace'}})
+                save(path, case)
+                print(f"  saved {case['status']}; {len(case['sources'])} passages", flush=True)
+                if answer.get('error_type') in {'http_429', 'quota_deadline'}:
+                    print('Provider quota reached; stopping without further requests', flush=True)
+                    break
     finally:
         retriever.close()
+        save(args.output / "completed.json", {"cases": [json.loads((args.output / (qid + ".json")).read_text()) for qid in manifest["question_ids"] if (args.output / (qid + ".json")).exists()]})
+        save(args.output / "budget.json", {"limit": budget.limit, "sent": budget.sent, "exhausted": budget.exhausted})
+        if os.getenv("LANGSMITH_API_KEY"):
+            get_client().flush()
 
 
 async def run(args):
@@ -329,6 +368,8 @@ def main():
     subs = parser.add_subparsers(dest='command', required=True)
     c = subs.add_parser('collect')
     c.add_argument('--limit', type=int, default=3)
+    c.add_argument('--sample-seed', type=int, help='Select a fixed random sample from training tuning questions')
+    c.add_argument('--max-requests', type=int, default=18, help='Hard HTTP attempt cap including retries; collection is resumable')
     c.add_argument('--output', type=Path, default=ROOT / 'data/ragas/pilot_v1')
     r = subs.add_parser('run')
     r.add_argument('--cases', type=Path, default=ROOT / 'data/ragas/pilot_v1')

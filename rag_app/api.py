@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from rag_app.state import SessionStore, AnswerCache
 from rag_app.observability import persist_run
+from rag_app.tracing import trace_span
 from rag_app.generation import MODEL, PROMPT_VERSION, GroqREST, AnswerGenerator, GenerationError
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -100,7 +101,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                 check.close()
         except Exception:
             raise HTTPException(503, 'Qdrant/source import is not ready') from None
-        return {'status': 'ready', 'presentation': 'direct_groq', 'models': 'lazy-loaded on first request', 'index': identity}
+        return {'status': 'ready', 'presentation': 'direct_groq', 'models': 'lazy-loaded on first request', 'index': identity, 'tracing': bool(os.getenv('LANGSMITH_API_KEY')) and os.getenv('LANGSMITH_TRACING', 'true').lower() == 'true'}
 
     @app.post('/session/end')
     def end(request: Request):
@@ -148,7 +149,7 @@ def create_app(retriever=None, generator=None, resolver=None):
         def emit(kind, value):
             if not stopped(): events.put((kind, value))
 
-        def worker():
+        def run_worker():
             acquired = False
             result = None
             provider = None
@@ -166,6 +167,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                 retrieve, generate = dependencies()
                 if hasattr(generate, "trace"):
                     generate.trace.clear()
+                    generate.on_progress = lambda stage: emit('stage', {'stage': stage})
                 if stopped(): return
                 provider = runtime.get('provider')
                 if provider:
@@ -204,9 +206,14 @@ def create_app(retriever=None, generator=None, resolver=None):
                 elif result is None:
                     emit('stage', {'stage': 'searching_and_selecting_evidence'})
                     if stopped(): return
-                    retrieved = retrieve.retrieve(question)
+                    with trace_span('Retrieve and select evidence', inputs={'question': question}) as span:
+                        retrieved = retrieve.retrieve(question)
+                        if span:
+                            span.end(outputs=retrieved)
                     if stopped(): return
                     sources = retrieved['sources']
+                    emit('stage', {'stage': 'selected_evidence', 'message': f'Selected {len(sources)} evidence excerpts'})
+                    emit('evidence', {'sources': sources})
                     generation_started = time.monotonic()
                     emit('stage', {'stage': 'writing_and_verifying'})
                     if stopped(): return
@@ -252,6 +259,15 @@ def create_app(retriever=None, generator=None, resolver=None):
                     result['metrics']['provider_calls'] = provider_calls
                     result['metrics']['http_attempts'] = list(provider.attempts)
                     provider.usage.clear()
+                from langsmith import get_current_run_tree
+                root_run = get_current_run_tree()
+                if root_run:
+                    try:
+                        result['langsmith_url'] = root_run.get_url()
+                    except Exception:
+                        pass
+                    result['metrics']['total_ms'] = round((time.monotonic() - started) * 1000, 2)
+                    root_run.end(outputs=result)
                 emit('final', result)
                 write_metrics({'request_id': rid, 'status': result['status'], 'metrics': result['metrics']},private_trace)
                 completed = True
@@ -265,12 +281,18 @@ def create_app(retriever=None, generator=None, resolver=None):
                 metrics = {'provider_calls': provider_calls,
                            'http_attempts': list(provider.attempts) if provider else [],
                            'failed_provider_calls': int(isinstance(exc, GenerationError)), 'error_category': exc.category if isinstance(exc, GenerationError) else type(exc).__name__}
+                from langsmith import get_current_run_tree
+                root_run = get_current_run_tree()
+                if root_run:
+                    root_run.end(outputs={'status': 'error', 'metrics': metrics})
                 emit('error', {'message': message[:220], 'request_id': rid, 'metrics': metrics})
                 private_trace = {'question': question, 'retrieval': retrieved,
                                  'generation': list(getattr(generate, 'trace', []))}
                 write_metrics({'request_id': rid, 'status': 'error', 'metrics': metrics}, private_trace)
                 completed = True
             finally:
+                if generate is not None and hasattr(generate, "on_progress"):
+                    generate.on_progress = None
                 if provider:
                     if not completed:
                         provider_calls = list(provider.usage)
@@ -282,6 +304,12 @@ def create_app(retriever=None, generator=None, resolver=None):
                 if acquired: serial.release()
                 admission.release()
                 emit('done', {})
+
+        def worker():
+            with trace_span('TechQA question', inputs={'question': body.question, 'regenerate': body.regenerate}, run_id=uuid.UUID(rid), metadata={'model': MODEL, 'prompt_version': PROMPT_VERSION, 'pipeline_sha256': pipeline_version()}) as run:
+                run_worker()
+                if run and not run.outputs:
+                    run.end(outputs={'status': 'cancelled_or_timed_out'})
 
         threading.Thread(target=worker, daemon=True).start()
         async def stream():

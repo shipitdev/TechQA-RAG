@@ -150,3 +150,29 @@ def test_active_index_change_reloads_default_retriever(isolated_root,monkeypatch
     assert len(instances)==2 and instances[0].closed
     assert len(writer.calls)==2
     assert '"answer_cache_hit": false' in second.text
+
+
+def test_evidence_arrives_before_the_approved_answer(isolated_root):
+    client = TestClient(api.create_app(Search(), Writer()))
+    response = client.post('/ask', json={'question': 'How do I restart?'})
+    assert response.text.index('event: evidence') < response.text.index('event: final')
+    evidence = response.text.split('event: evidence\ndata: ', 1)[1].split('\n\n', 1)[0]
+    assert set(json.loads(evidence)) == {'sources'}
+    assert 'answer' not in json.loads(evidence)
+
+
+def test_real_generator_streams_activity_without_private_verifier_text(isolated_root):
+    from rag_app.generation import AnswerGenerator
+    decisions = iter([
+        {'status': 'answered', 'answer': 'Restart the service. [S1]', 'citations': ['S1']},
+        {'verdict': 'complete', 'supported': True, 'complete': True, 'missing_steps': [],
+         'version_conflicts': [], 'findings': ['private_verifier_canary'], 'unsupported_claims': []},
+    ])
+    writer = AnswerGenerator(lambda prompt, schema: next(decisions))
+    client = TestClient(api.create_app(Search(), writer))
+    response = client.post('/ask', json={'question': 'How do I restart?'})
+    assert '"stage": "write"' in response.text
+    assert '"stage": "verify"' in response.text
+    assert 'private_verifier_canary' not in response.text
+    assert response.text.index('"stage": "verify"') < response.text.index('event: final')
+    assert writer.on_progress is None

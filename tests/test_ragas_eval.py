@@ -154,3 +154,47 @@ def test_real_ragas_aggregations_with_controlled_marking_not_network_calls(monke
     assert results['answer_relevancy']['score'] == pytest.approx(1)
     assert results['factual_correctness']['score'] == pytest.approx(.5)
     assert results['answer_completeness']['score'] == pytest.approx(.5)
+
+
+def test_collection_stops_after_first_quota_error(tmp_path, monkeypatch):
+    import json
+    import scripts.eval_ragas as evaluation
+    import rag_app.retriever as retrieval
+    import rag_app.generation as generation
+    root = tmp_path
+    base = root / 'raw/TechQA/training_and_dev'
+    base.mkdir(parents=True)
+    rows = [question('TRAIN_Q1'), question('TRAIN_Q2')]
+    (base / 'training_Q_A.json').write_text(json.dumps(rows))
+    (base / 'training_dev_technotes.json').write_text(json.dumps({'gold': {'text': 'Use fix=42 now'}}))
+    split = root / 'data/splits/techqa_v1.json'
+    split.parent.mkdir(parents=True)
+    split.write_text(json.dumps({'tuning_ids': ['TRAIN_Q1', 'TRAIN_Q2'], 'source_hashes': {
+        name: evaluation.sha256(base / name) for name in ['training_Q_A.json', 'training_dev_technotes.json']}}))
+    monkeypatch.setattr(evaluation, 'ROOT', root)
+    monkeypatch.setattr(evaluation, 'RAW', root / 'raw')
+    search = SimpleNamespace(index_identity=lambda: 'test', close=lambda: None,
+                             retrieve=lambda q: {'sources': [], 'metrics': {}})
+    monkeypatch.setattr(retrieval, 'Retriever', lambda: search)
+    provider = SimpleNamespace(model='test', json_call=lambda *a: None, usage=[], attempts=[])
+    monkeypatch.setattr(generation, 'GroqREST', lambda **kwargs: provider)
+    attempts = []
+
+    class QuotaWriter:
+        trace = []
+        def generate(self, question, sources):
+            attempts.append(question)
+            raise generation.GenerationError('quota', category='http_429')
+
+    monkeypatch.setattr(generation, 'AnswerGenerator', lambda call: QuotaWriter())
+    monkeypatch.delenv('LANGSMITH_API_KEY', raising=False)
+    output = root / 'output'
+    args = SimpleNamespace(limit=2, output=output, max_requests=5, sample_seed=None)
+    evaluation.collect(args)
+    assert len(attempts) == 1
+    assert (output / 'TRAIN_Q1.json').exists()
+    assert not (output / 'TRAIN_Q2.json').exists()
+    assert len(json.loads((output / 'completed.json').read_text())['cases']) == 1
+    evaluation.collect(args)
+    assert len(attempts) == 2
+    assert not (output / 'TRAIN_Q2.json').exists()
