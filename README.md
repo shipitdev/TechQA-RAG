@@ -139,7 +139,7 @@ This is a code-only checkout, not a bundled dataset or one-command model downloa
 
 `RAG_RERANKER_DIR` can override the reranker location with an absolute path or a path relative to the project root. Serving validates local assets and does not silently download missing weights.
 
-The current importer deliberately targets the audited snapshot: **28,482 articles, 99,697 document chunks and 120 trailing query vectors**. Query vectors are excluded from the Qdrant collection. A different corpus/chunk build needs a reviewed importer/configuration update, not relaxed integrity checks.
+The current importer deliberately targets the audited snapshot: **28,482 articles, 99,697 document chunks and 120 trailing query vectors**. Query vectors are excluded from the Qdrant collection. Use the versioned update workflow below for subsequent document changes. Changes to the embedding or chunking policy require a separately prepared index.
 
 Preparation code is included in `scripts/audit_techqa.py`, `baseline.py`, `chunking.py`, `ingest_html.py` and `eval_embeddings.py`. Rebuilding requires the original release, tokenizer manifests and the pinned model access; embedding preparation uses a CUDA runtime. It is separate from the local serving setup.
 
@@ -173,9 +173,77 @@ npm ci
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Open `http://127.0.0.1:3000`. The example `APP_ORIGIN` matches that address. For another origin, update it explicitly. The frontend proxies to `http://127.0.0.1:8000`; set `RAG_API_URL` in `frontend/.env.local` to change the upstream.
+Open `http://127.0.0.1:3000`. The example `APP_ORIGIN` matches that address. For another origin, update it explicitly. The frontend proxies to `http://127.0.0.1:8000`; set the full `/ask` URL in `RAG_API_URL` inside `frontend/.env.local` to change the upstream.
 
-`GET /health/live` checks the API process. `GET /health/ready` checks key/source/index readiness. The first request loads local models, so cold-start latency differs from subsequent requests.
+`GET /health/live` checks the API process. `GET /health/ready` checks the key, pinned model assets, source hash and active index identity/count. The first request loads local models, so cold-start latency differs from subsequent requests.
+
+## V1 acceptance and operation
+
+The local V1 uses one API worker and Docker Qdrant. Its [redacted acceptance results](evaluations/results/v1_acceptance.json) record the checks and their scope.
+
+| Check | Observation |
+|---|---|
+| Saved training-context replay | **80/97 → 83/97**, three gains and zero losses, using a reference-word coverage proxy |
+| Changed-document drill | **2 chunks embedded, 99,695 vectors reused** across add/update/delete, followed by a zero-embedding repeat and successful rollback |
+| Backup recovery | **28,482 documents / 99,697 vectors** validated, with identical exact-search top-ten results for three saved query vectors |
+| Verifier calibration | **4/4** targeted canaries passed |
+| Four final targeted questions | One answered, one clarification, two withheld |
+| Live acceptance usage | **15/15 HTTP 200**, **62,248 reported tokens** across initial checks, canaries and the final generation pass |
+
+The replay uses training tuning questions and a text-coverage proxy. Final generation reused the newly selected contexts. These measurements support the targeted fixes. Full held-out answer quality remains a later milestone. Q046/Q037 still withhold, and historical RAGAS review flags remain visible.
+
+Browser acceptance uses the existing controlled GenUI fixture. It checks rendering, excerpts, structured Run details, regeneration and session clearing. The API suite also covers the storage/search/verification handoff, session isolation, exact cache invalidation after an index change and bounded concurrent admission.
+
+### Update documents and roll back
+
+After the initial import, register the existing index once. Adoption validates source membership, payload versions, vector dimensions and norms.
+
+```bash
+.venv-ingest/bin/python -m scripts.manage_index adopt
+.venv-ingest/bin/python -m scripts.manage_index status
+```
+
+An update file maps document IDs to records with `title`, `text` and `metadata`. Optional `content` supplies original HTML for the existing Docling parser. Keep the original body in `text` when providing HTML so exact source matches can be mapped. Changed documents retain their raw input in the source store.
+
+```json
+{
+  "your-document-id": {
+    "title": "Updated support article",
+    "text": "The updated article body.",
+    "metadata": {"productName": "Your product"}
+  }
+}
+```
+
+Stage changes into a separate collection, then activate the returned build ID. An unchanged input reuses its existing version. Deletion can be run with `--delete` alone. Policy fingerprints prevent mixing a changed model/parser/chunker configuration with old vectors.
+
+```bash
+.venv-ingest/bin/python -m scripts.manage_index stage --updates /path/to/updates.json
+.venv-ingest/bin/python -m scripts.manage_index stage --delete document-id-to-remove
+.venv-ingest/bin/python -m scripts.manage_index activate BUILD_ID
+.venv-ingest/bin/python -m scripts.manage_index validate
+.venv-ingest/bin/python -m scripts.manage_index activate PREVIOUS_BUILD_ID
+```
+
+Staging copies unchanged vectors to preserve an isolated, recoverable version. It embeds the changed documents only. The serving process picks up activation on its next request. Keep version directories and their Qdrant collections together. Stage each batch from the currently active version.
+
+### Back up and restore
+
+```bash
+.venv-ingest/bin/python -m scripts.manage_index backup /path/to/new-backup-directory
+.venv-ingest/bin/python -m scripts.manage_index restore /path/to/backup-directory
+.venv-ingest/bin/python -m scripts.manage_index activate RESTORE_ID
+```
+
+The backup contains a native Qdrant snapshot, matching SQLite sources and checksums. Restore creates a separate collection and returns `restore_id`. Activation validates the pair before changing the local pointer. This workflow is tested on a single-node Docker Qdrant. See the [Qdrant snapshot documentation](https://qdrant.tech/documentation/snapshots/) for the underlying snapshot operations.
+
+### Inspect runs and operating bounds
+
+The local service admits five requests, processes one at a time, waits up to 30 seconds for the worker and bounds each request at 180 seconds. Provider quota waiting contributes to response time. Controlled concurrency tests exercise these bounds. Public traffic capacity needs a separate load measurement.
+
+Run details displays stage times, model/index/prompt identities, cache hits, token usage and HTTP attempts. Local metrics are content-free, capped at 100 MiB and seven days. Retrieval caches retain up to 2,048 query vectors and 50,000 pair scores. Existing answer-cache/session limits apply as well.
+
+Set `RAG_TRACE_DIR` in the backend environment to opt into private local JSON traces containing the question, candidates, selected passages and generation decisions. Traces use owner-only file permissions and retain up to 50 files, 128 MiB and seven days. Keep that directory outside public hosting and Git. Gold references remain in offline evaluation artifacts.
 
 ## Run RAGAS offline
 
