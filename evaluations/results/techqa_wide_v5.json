@@ -1,0 +1,609 @@
+{
+  "scope": "Seeded answerable training tuning cohort. Standalone canonical retrieval, writing, verification and repair.",
+  "selection": {
+    "planned": 30,
+    "collected": 15,
+    "pending": 15,
+    "seed": 20261110
+  },
+  "model": "openai/gpt-oss-120b",
+  "judge": "openai/gpt-oss-20b",
+  "prompt_version": "strict_v5_message_roles",
+  "outcomes": {
+    "generation_error": 5,
+    "insufficient_evidence": 2,
+    "answered": 8
+  },
+  "generation_errors": {
+    "invalid_citations": 3,
+    "quota_deadline": 1,
+    "http_429": 1
+  },
+  "metrics": {
+    "answer_coverage": 0.5333333333333333,
+    "selected_gold_document_hit_rate": 0.9333333333333333,
+    "citation_contract_pass_rate": 1.0
+  },
+  "denominators": {
+    "selected_gold_document_hit_rate": 15,
+    "citation_contract_pass_rate": 8
+  },
+  "ragas_raw": {
+    "attempted": 15,
+    "outcomes": {
+      "generation_error": 5,
+      "insufficient_evidence": 2,
+      "answered": 8
+    },
+    "metrics": {
+      "context_recall": {
+        "success": 11,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 3,
+        "mean": 0.9090909090909091,
+        "flagged_for_review": 0
+      },
+      "faithfulness": {
+        "success": 5,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 3,
+        "budget_exhausted": 0,
+        "mean": 0.975,
+        "flagged_for_review": 0
+      },
+      "context_precision": {
+        "success": 2,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 0,
+        "mean": 0.9020833333069618,
+        "flagged_for_review": 0
+      },
+      "factual_correctness": {
+        "success": 5,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 0,
+        "mean": 0.426,
+        "flagged_for_review": 1
+      },
+      "answer_completeness": {
+        "success": 5,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 0,
+        "mean": 0.534,
+        "flagged_for_review": 1
+      },
+      "answer_relevancy": {
+        "success": 3,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 0,
+        "mean": 0.9304797472908871,
+        "flagged_for_review": 0
+      }
+    }
+  },
+  "sampling": {
+    "core_initial_ids": [
+      "TRAIN_Q252",
+      "TRAIN_Q425",
+      "TRAIN_Q376",
+      "TRAIN_Q013",
+      "TRAIN_Q414"
+    ],
+    "precision_ids": [
+      "TRAIN_Q252",
+      "TRAIN_Q425"
+    ],
+    "answer_quality_ids": [
+      "TRAIN_Q376",
+      "TRAIN_Q013",
+      "TRAIN_Q117",
+      "TRAIN_Q548",
+      "TRAIN_Q310"
+    ],
+    "relevance_ids": [
+      "TRAIN_Q376",
+      "TRAIN_Q013",
+      "TRAIN_Q117"
+    ],
+    "wider_recall": "remaining budget after other metrics"
+  },
+  "review_notes": {
+    "TRAIN_Q376": "Reference scope needs review. A source-link answer is compared with the full bulletin text.",
+    "TRAIN_Q310": "Heuristic flag needs review. The as-5 match concerns initial connection counts while as-60 concerns cache timeout. Both numbers appear in the original response."
+  },
+  "operations": {
+    "generation_http_attempts": 41,
+    "generation_reported_tokens": 206804,
+    "judge_http_attempts": 120,
+    "judge_reported_tokens": 172079,
+    "calibration_http_attempts": 4,
+    "calibration_reported_tokens": 3757,
+    "judge_cache_hits": 29,
+    "judge_cache_misses": 69,
+    "answered_batch_seconds_median": 128.05175710400363,
+    "answered_batch_seconds_max": 141.51168862500344,
+    "timing_scope": "Includes retrieval, model calls and quota pacing in a serial batch.",
+    "cost_usd": null
+  },
+  "budgets": {
+    "generation_total_cap": 90,
+    "generation_invocations": [
+      {
+        "limit": 90,
+        "sent": 38
+      },
+      {
+        "limit": 52,
+        "sent": 3
+      }
+    ],
+    "judge_cap": 120,
+    "calibration_cap": 8
+  },
+  "cases": [
+    {
+      "question_id": "TRAIN_Q252",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 7,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "success",
+          "score": 0.8874999999778125,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q425",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 9,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "success",
+          "score": 0.9166666666361111,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q376",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 14,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "success",
+          "score": 0.9170371340678626,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q013",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "success",
+          "score": 0.8,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 0.67,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "success",
+          "score": 0.9793743376624086,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q414",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 10,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q488",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 10,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q361",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q117",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 14,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "success",
+          "score": 0.8950277701423902,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q548",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q310",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "success",
+          "score": 0.33,
+          "needs_review": true
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": true
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 0.875,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [
+        {
+          "metric": "factual_correctness",
+          "label": "as",
+          "introduced_version": "5",
+          "allowed_versions": [
+            "60"
+          ],
+          "needs_review": true
+        },
+        {
+          "metric": "answer_completeness",
+          "label": "as",
+          "introduced_version": "5",
+          "allowed_versions": [
+            "60"
+          ],
+          "needs_review": true
+        }
+      ]
+    },
+    {
+      "question_id": "TRAIN_Q230",
+      "outcome": "answered",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q353",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q599",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q365",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 16,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q388",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    }
+  ],
+  "artifact_sha256": {
+    "collection_manifest": "a49bf986219036e536a5395b8450c13167316f6595a774d16307f239f55aba00",
+    "raw_ragas": "cf0e07a38ea351304aefc6f62d5e7a8d16caa0fa271c3c158277208ca54e0b48",
+    "final_composed_ragas": "b4f32bad9144a5db2b33570c50e7c42812d64fc47a10b9453ff59d612aa3ad2f"
+  },
+  "limitations": [
+    "Provider rate limiting stopped generation with 15 planned cases pending.",
+    "Three context recall scores exhausted the judge request budget.",
+    "Metrics use different sample sizes. Answer metrics are conditional on released answers.",
+    "Raw means retain one case with heuristic review flags. LangSmith withholds its flagged metric values.",
+    "Reference agreement depends on answer scope and reference completeness. Scores require review.",
+    "The judge differs from earlier runs. This run establishes a fresh baseline.",
+    "Reserved development questions were not used."
+  ],
+  "judge_config": {
+    "temperature": 0,
+    "reasoning_effort": "low",
+    "max_tokens": 2048,
+    "strictness": 3,
+    "packages": {
+      "ragas": "0.4.3",
+      "openai": "2.54.0",
+      "instructor": "1.17.0",
+      "langchain-community": "0.4.1",
+      "sentence-transformers": "6.2.0",
+      "torch": "2.15.0",
+      "transformers": "5.22.1",
+      "torchvision": "0.29.2"
+    },
+    "ragas_source_sha256": "3e1a68a9cbef46834c672b716266089b1764d5d7bd424f997e92c8d92083e160",
+    "implementation_sha256": "f39f2b56005861d92b8df4e2fc33004dc2fed6abff256f428c916c470bc009fe"
+  },
+  "inference_source_sha256": {
+    "rag_app/__init__.py": "2fdce6dc6a2613b920f0df2e2dcaffbf3aa3775fa03b3b2b35294f6f2b609431",
+    "rag_app/api.py": "194c7657b566f0330ce2e463ab7772ecbb4e7aeee3ef2feddaff1b77a03d8553",
+    "rag_app/feedback.py": "61ef4c889fb31d58e73ceba58426f9747f6a7ae7b563f3334f950391eb4bdb49",
+    "rag_app/generation.py": "9afb38360c6374db464e6bbc7feb0a10f9e5786a7162f5a9180ad9b9e39be135",
+    "rag_app/indexes.py": "bbd9759f62a68b3a57380c587f772018421e00d918542257232c4eb8cfbf0a5c",
+    "rag_app/observability.py": "eec2d67e7a02622391d6f4b8d0ef0fe86b53c9f444c6d226b4f2f9d4948e023a",
+    "rag_app/presentation.py": "f3d01624ef8cdb8961041517a8712ebec745e350e4aef03dcd99895205ac33d2",
+    "rag_app/retriever.py": "c49ed1d3376044f656d20d632f54761d89461c5d7e4ab8ab3d2a831e81459940",
+    "rag_app/state.py": "201aba9117c53f6b34a9a4455a413953a5aede2b6baa78129cb5e1698f75fc45",
+    "rag_app/storage.py": "7220891a37d005ad734440a56bea69c1161ffab807e194b4aca69363fdaedb1a",
+    "rag_app/tracing.py": "7ccd4f804b359adbd77e168178db9eedf73eac4f8ca7cac639fa76032f4adc92"
+  },
+  "split_sha256": "9b3c6d289f9570e6d7230dec90b15c769b0fc56ceb609bb2c3f44dc73a9f977a",
+  "inference_snapshot_matches_current": true
+}

@@ -197,9 +197,10 @@ def collect(args):
             path = args.output / (q['QUESTION_ID'] + '.json')
             if path.exists():
                 previous = json.loads(path.read_text())
-                if previous.get('generation', {}).get('error_type') not in {'http_429', 'quota_deadline'}:
+                if previous.get('generation', {}).get('error_type') != 'http_429':
                     print(q['QUESTION_ID'] + ': saved case reused', flush=True)
                     continue
+                save(args.output / 'attempts' / q['QUESTION_ID'] / (fingerprint(previous) + '.json'), previous)
             if budget.exhausted or budget.sent >= budget.limit:
                 print('HTTP budget reached; remaining cases can resume later', flush=True)
                 break
@@ -233,7 +234,7 @@ def collect(args):
                     run.end(error=answer.get('error_type'), outputs={'status': case['status'], 'response': case['response'], 'sources': case['sources'], 'generation': {key: value for key, value in case['generation'].items() if key != 'trace'}})
                 save(path, case)
                 print(f"  saved {case['status']}; {len(case['sources'])} passages", flush=True)
-                if answer.get('error_type') in {'http_429', 'quota_deadline'}:
+                if answer.get('error_type') == 'http_429':
                     print('Provider quota reached; stopping without further requests', flush=True)
                     break
     finally:

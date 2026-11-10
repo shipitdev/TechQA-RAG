@@ -156,7 +156,8 @@ def test_real_ragas_aggregations_with_controlled_marking_not_network_calls(monke
     assert results['answer_completeness']['score'] == pytest.approx(.5)
 
 
-def test_collection_stops_after_first_quota_error(tmp_path, monkeypatch):
+@pytest.mark.parametrize('category, expected_calls', [('http_429', 1), ('quota_deadline', 2)])
+def test_collection_distinguishes_account_limits_from_request_deadlines(tmp_path, monkeypatch, category, expected_calls):
     import json
     import scripts.eval_ragas as evaluation
     import rag_app.retriever as retrieval
@@ -184,20 +185,21 @@ def test_collection_stops_after_first_quota_error(tmp_path, monkeypatch):
         trace = []
         def generate(self, question, sources):
             attempts.append(question)
-            raise generation.GenerationError('quota', category='http_429')
+            raise generation.GenerationError('quota', category=category)
 
     monkeypatch.setattr(generation, 'AnswerGenerator', lambda call: QuotaWriter())
     monkeypatch.delenv('LANGSMITH_API_KEY', raising=False)
     output = root / 'output'
     args = SimpleNamespace(limit=2, output=output, max_requests=5, sample_seed=None)
     evaluation.collect(args)
-    assert len(attempts) == 1
+    assert len(attempts) == expected_calls
     assert (output / 'TRAIN_Q1.json').exists()
-    assert not (output / 'TRAIN_Q2.json').exists()
-    assert len(json.loads((output / 'completed.json').read_text())['cases']) == 1
+    assert (output / 'TRAIN_Q2.json').exists() == (expected_calls == 2)
+    assert len(json.loads((output / 'completed.json').read_text())['cases']) == expected_calls
     evaluation.collect(args)
     assert len(attempts) == 2
-    assert not (output / 'TRAIN_Q2.json').exists()
+    archived = list((output / 'attempts').rglob('*.json'))
+    assert len(archived) == (1 if category == 'http_429' else 0)
 
 
 def test_unreviewed_feedback_is_rejected_before_judging(tmp_path):
