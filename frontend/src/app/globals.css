@@ -238,3 +238,14 @@ body { --body: var(--font-geist), Arial, sans-serif; --mono: var(--font-geist-mo
 @media (min-width: 901px) {
   .rail-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 }
+.answer-feedback { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; }
+.answer-feedback fieldset { min-width: 0; border: 0; margin: 0; padding: 0; }
+.answer-feedback legend { margin-bottom: 12px; font-weight: 500; }
+.feedback-choices { display: flex; gap: 8px; margin-bottom: 16px; }
+.feedback-choices button { min-height: 36px; padding: 0 12px; border: 1px solid #d4d4d4; border-radius: 6px; background: white; }
+.feedback-choices button[aria-pressed="true"] { border-color: #141414; background: #eee; }
+.answer-feedback label { display: block; margin-bottom: 8px; }
+.answer-feedback label span, .feedback-note { color: #626262; }
+.answer-feedback textarea { width: 100%; padding: 10px 12px; border: 1px solid #d4d4d4; border-radius: 6px; resize: vertical; background: white; }
+.feedback-note { font-size: 12px; }
+.answer-feedback button:disabled { opacity: .6; cursor: default; }

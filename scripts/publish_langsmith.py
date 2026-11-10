@@ -18,13 +18,21 @@ def publish(directory, client, ragas=None):
     identity_file = directory / "manifest.json" if directory.is_dir() else directory
     identity = report["cohort_id"]
     artifact_hash = hashlib.sha256(identity_file.read_bytes()).hexdigest()
-    name = "techqa-training-" + identity[:12]
+    feedback_cohort = all(c["question_id"].startswith("FEEDBACK_") for c in cases)
+    name = ("techqa-feedback-" if feedback_cohort else "techqa-training-") + identity[
+        :12
+    ]
     try:
         dataset = client.read_dataset(dataset_name=name)
     except LangSmithNotFoundError:
         dataset = client.create_dataset(
             name,
-            description="Fixed training tuning sample. References are used only for scoring.",
+            description=(
+                "Reviewed feedback regression cases"
+                if feedback_cohort
+                else "Fixed training tuning sample"
+            )
+            + ". References are used only for scoring.",
         )
     existing = {
         example.inputs["question_id"]
@@ -103,7 +111,7 @@ def publish(directory, client, ragas=None):
             "cohort_id": identity,
             "collection_artifact_sha256": artifact_hash,
             "mode": "saved_result_replay",
-            "split": "training_tuning",
+            "split": "reviewed_user_feedback" if feedback_cohort else "training_tuning",
         },
     )
     client.flush()

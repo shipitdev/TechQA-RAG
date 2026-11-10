@@ -134,3 +134,9 @@
 !/tests/test_langsmith_export.py
 
 !/evaluations/results/observability_v1.json
+
+!/rag_app/feedback.py
+!/tests/test_feedback.py
+!/scripts/feedback_cases.py
+!/frontend/src/app/api/feedback/
+!/frontend/src/app/api/feedback/route.ts

@@ -19,6 +19,14 @@ type FinalEvent = {
 type Result = FinalEvent & { question: string; runId: number; genUiValid?: boolean };
 type ServiceStatus = { api: string; presentation_status: string };
 
+type FeedbackState = {
+  choice: boolean | null;
+  comment: string;
+  state: "idle" | "saving" | "saved" | "error";
+  message: string;
+};
+const emptyFeedback: FeedbackState = { choice: null, comment: "", state: "idle", message: "" };
+
 function validSource(value: unknown): value is VerifiedSource {
   if (!value || typeof value !== "object") return false;
   const source = value as Record<string, unknown>;
@@ -102,6 +110,7 @@ async function* readEvents(response: Response) {
 }
 
 export default function Workspace() {
+  const [feedback, setFeedback] = useState<FeedbackState>(emptyFeedback);
   const [elapsed, setElapsed] = useState(0);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
@@ -129,6 +138,7 @@ export default function Workspace() {
       runCounter.current += 1;
       setQuestion("");
       setResult(null);
+    setFeedback(emptyFeedback);
       setStages([]);
       setRetrievedSources([]);
       setError("");
@@ -162,6 +172,7 @@ export default function Workspace() {
     setFailedRun(null);
     setOpenUiMessage("");
     setResult(null);
+    setFeedback(emptyFeedback);
     setStages([]);
     setRetrievedSources([]);
     setQuestion(submitted);
@@ -228,6 +239,25 @@ export default function Workspace() {
     }
   }
 
+  async function submitFeedback(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!result?.request_id || feedback.choice === null || feedback.state === "saving") return;
+    const runId = result.runId;
+    setFeedback((current) => ({ ...current, state: "saving", message: "" }));
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ request_id: result.request_id, helpful: feedback.choice, comment: feedback.comment }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) throw new Error("Feedback could not be saved. Please retry.");
+      if (runCounter.current === runId) setFeedback((current) => ({ ...current, state: "saved", message: "Feedback saved for review." }));
+    } catch {
+      if (runCounter.current === runId) setFeedback((current) => ({ ...current, state: "error", message: "Feedback could not be saved. Please retry." }));
+    }
+  }
+
   function stopRequest(event: MouseEvent<HTMLButtonElement>) {
     // Cancellation can switch this same button back to submit during the click.
     event.preventDefault();
@@ -248,6 +278,7 @@ export default function Workspace() {
       runCounter.current += 1;
       setQuestion("");
       setResult(null);
+    setFeedback(emptyFeedback);
       setStages([]);
       setRetrievedSources([]);
       setError("");
@@ -378,6 +409,33 @@ export default function Workspace() {
                     <strong>{result.status === "needs_clarification" ? "A detail is needed before I can answer." : "I couldn’t verify an answer from the available sources."}</strong>
                     <p>{result.status === "needs_clarification" ? "Refine your question with the missing system, version, or context and ask again." : "Try a narrower question or check that the relevant documents are in this knowledge base."}</p>
                   </div>
+                )}
+                {result.request_id && (
+                  <form className="answer-feedback" onSubmit={submitFeedback} aria-busy={feedback.state === "saving"}>
+                    <fieldset disabled={feedback.state === "saving"}>
+                      <legend>Was this answer helpful?</legend>
+                      <div className="feedback-choices">
+                        {[true, false].map((choice) => (
+                          <button key={String(choice)} type="button" aria-pressed={feedback.choice === choice}
+                            onClick={() => setFeedback((current) => ({ ...current, choice, state: "idle", message: "" }))}>
+                            {choice ? "Helpful" : "Not helpful"}
+                          </button>
+                        ))}
+                      </div>
+                      {feedback.choice !== null && (
+                        <>
+                          <label htmlFor="feedback-comment">{feedback.choice ? "Anything we should improve?" : "What went wrong?"} <span>(optional)</span></label>
+                          <textarea id="feedback-comment" maxLength={2000} rows={3} value={feedback.comment}
+                            onChange={(event) => setFeedback((current) => ({ ...current, comment: event.target.value, state: "idle", message: "" }))} />
+                          <p className="feedback-note">Sending feedback saves this question, answer, sources and run details for review.</p>
+                          <button type="submit" className="secondary-button" disabled={feedback.state === "saved"}>
+                            {feedback.state === "saving" ? "Saving…" : "Send feedback"}
+                          </button>
+                        </>
+                      )}
+                    </fieldset>
+                    {feedback.message && <p role={feedback.state === "error" ? "alert" : "status"}>{feedback.message}</p>}
+                  </form>
                 )}
               </article>
             )}
