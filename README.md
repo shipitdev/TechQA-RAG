@@ -76,24 +76,24 @@ Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Exis
 
 ### Wider training run with prompt version 5
 
-The [saved result](evaluations/results/techqa_wide_v5.json) covers **15 of 30 planned training questions**. Generation stopped on a provider rate limit. The run produced **8 released answers, 2 withheld responses, 3 citation-format failures, 1 local quota-wait deadline and 1 provider rate-limit failure**. The selected evidence included the labeled article for **14/15** questions. All **8 released answers** passed citation-format checks.
+The [saved result](evaluations/results/techqa_wide_v5.json) covers **all 30 planned training questions**. It produced **15 released answers, 6 withheld responses, 1 clarification request and 8 generation failures**. Seven failures omitted inline citations even after repair. One earlier failure reached a local quota-wait deadline. The selected evidence included the labeled article for **25/30** questions. All **15 released answers** passed citation-format checks.
 
-RAGAS used `openai/gpt-oss-20b` after a supported/unsupported faithfulness check scored 1.0/0.0. Answer generation used `openai/gpt-oss-120b`. Samples were selected separately for each metric to bound judging cost.
+RAGAS used `openai/gpt-oss-20b` after a supported/unsupported faithfulness check scored 1.0/0.0. Answer generation used `openai/gpt-oss-120b`. Samples follow the fixed question order, with answer metrics conditional on released answers.
 
 | RAGAS metric | Raw mean | Scored cases | Review flags |
 |---|---:|---:|---:|
-| Context recall | 90.9% | 11 | 0 |
-| Context precision | 90.2% | 2 | 0 |
-| Faithfulness | 97.5% | 5 | 0 |
+| Context recall | 83.3% | 30 | 0 |
+| Context precision | 87.9% | 4 | 0 |
+| Faithfulness | 94.4% | 10 | 0 |
 | Answer relevancy | 93.0% | 3 | 0 |
 | Factual correctness against the reference | 42.6% | 5 | 1 |
 | Completeness against the reference | 53.4% | 5 | 1 |
 
-Three additional context-recall cases reached the judge request cap. Raw means retain flagged values. LangSmith leaves those flagged values pending review, so its displayed averages use fewer cases. Source inspection also found a reference-scope issue where a question asks for a bulletin link but its reference contains the full bulletin text. Correctness and completeness scores require review before being used as release criteria.
+Context recall scored the full cohort. Precision scored four of five attempted cases. Expanded correctness/completeness stopped when the provider requested a 527-second wait, beyond the metric deadline. Relevancy retains its earlier three-case sample. Raw means retain flagged values. LangSmith leaves flagged values pending review, so its displayed averages use fewer cases. Source inspection also found a reference-scope issue where a question asks for a bulletin link but its reference contains the full bulletin text. Correctness and completeness need review before use as release criteria.
 
-Generation used **41 HTTP attempts / 206,804 reported tokens**. Judging used **120 attempts / 172,079 tokens**, plus **4 calibration calls / 3,757 tokens**. The runner reused **29 cached judge decisions**. Median answered-case batch time was **128.1 seconds**, including quota waits and local retrieval. These timings describe a serial batch. Reserved development questions remain available for a later release evaluation.
+Generation used **77 HTTP attempts / 396,211 reported tokens**, including the archived rate-limited attempt. Judging used **228 attempts / 384,342 tokens**, plus **4 calibration calls / 3,757 tokens**. The runner reused **108 cached judge decisions**. Median answered-case batch time was **129.7 seconds**, including quota waits and local retrieval. These timings describe a serial batch. Reserved development questions remain available for a later release evaluation.
 
-The collector initially stopped on a local request deadline. That condition was corrected, existing cases were reused, and collection continued until a provider HTTP 429 response. Retryable failed attempts are now archived before replacement.
+The collector initially stopped on a local request deadline. That condition was corrected, existing cases were reused, and all 30 questions finished after a provider-key update. Retryable failed attempts are archived before replacement. The pipeline stayed fixed during the evaluation.
 
 
 ### Component measurements already recorded
