@@ -74,6 +74,27 @@ Approval and review notes are required for feedback-based RAGAS evaluation. Use 
 
 Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Existing origin/session, withholding and generated-component checks cover specific application contracts; they are not a comprehensive safety benchmark. Optional semantic metrics compare against available references, which may omit valid alternative answers.
 
+### Bounded generation comparison with prompt version 6
+
+The [saved comparison](evaluations/results/generation_v6.json) keeps the same 30 questions, references and source passages. The updated flow uses one writer, code-only display of valid writer-selected citation IDs and one verifier. A failed factual check withholds the answer. Code formatted citations in **21/30** cases, so prompt changes alone did not solve citation output.
+
+Groq completed 28 cases. At the user's request, the final two used TokenHarbor `deepseek-v4.1-flash:free` with frozen baseline evidence. Those two are excluded from the controlled Groq comparison. One fallback response reached its output limit and was retried with a larger allowance, then withheld. One Groq case retains its provider HTTP429 failure.
+
+| Controlled measurement | Before | After | Cases |
+|---|---:|---:|---:|
+| Released answers, same Groq model | 14/28 | 18/28 | 28 |
+| Citation-format failures | 6 | 0 | 28 |
+| Mean model stages, shared released answers | 2.91 | 2.00 | 11 |
+| Context recall | 83.3% | 83.3% | 30, unchanged context |
+| Context precision | 87.9% | 87.9% | 4, unchanged context |
+| Paired faithfulness | 92.8% | 98.3% | 6 |
+| Paired reference correctness | 45.0% | 32.3% | 4 |
+| Paired completeness | 41.8% | 50.0% | 4 |
+
+Across all 30 outcomes there were **19 answers, 9 withheld responses, 1 clarification and 1 provider failure**. All 19 released answers passed citation-format checks. The paired semantic rows use only shared, unflagged scored cases. Raw candidate faithfulness was **93.0% across 11 answers**. Reference correctness decreased on its four shared cases and requires review. Q117 added version-qualified information beyond the reference, while Q376's bulletin-link reference and Q548's claim alignment remain review concerns. These results do not establish a broad answer-quality improvement.
+
+Collection and diagnostics used **64/66 HTTP attempts and 309,561 reported tokens**, including archived attempts. Recorded judging used **77/120 attempts and 116,119 tokens**, with **172 judge-cache hits** across scoring passes. The judge was stopped when the user ran out of Groq quota, and cache-only assembly made zero model calls. Recorded judge usage may omit in-flight activity at interruption. Answer relevancy was not rescored. Timing differences include quota waits and account changes. Reserved development remains unused.
+
 ### Wider training run with prompt version 5
 
 The [saved result](evaluations/results/techqa_wide_v5.json) covers **all 30 planned training questions**. It produced **15 released answers, 6 withheld responses, 1 clarification request and 8 generation failures**. Seven failures omitted inline citations even after repair. One earlier failure reached a local quota-wait deadline. The selected evidence included the labeled article for **25/30** questions. All **15 released answers** passed citation-format checks.

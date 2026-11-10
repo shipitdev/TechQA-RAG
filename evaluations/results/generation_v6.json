@@ -1,0 +1,1548 @@
+{
+  "scope": "Fixed 30-question training generation comparison. Retrieval evidence unchanged. 28 Groq cases and two separately labeled TokenHarbor fallback cases.",
+  "prompt_version": "strict_v6_two_call_verification",
+  "cohort_id": "bf576cd2880caaf9ee73baab05937d94f4668b65e8eb9afbab3f5e6e0a74f1fb",
+  "selection": {
+    "planned": 30,
+    "processed": 30,
+    "seed": 20261110
+  },
+  "outcomes": {
+    "answered": 19,
+    "insufficient_evidence": 9,
+    "needs_clarification": 1,
+    "generation_error": 1
+  },
+  "metrics": {
+    "answer_coverage": 0.6333333333333333,
+    "selected_gold_document_hit_rate": 0.8333333333333334,
+    "citation_contract_pass_rate": 1.0
+  },
+  "denominators": {
+    "selected_gold_document_hit_rate": 30,
+    "citation_contract_pass_rate": 19
+  },
+  "ragas_raw": {
+    "attempted": 30,
+    "outcomes": {
+      "answered": 19,
+      "insufficient_evidence": 9,
+      "needs_clarification": 1,
+      "generation_error": 1
+    },
+    "metrics": {
+      "faithfulness": {
+        "success": 11,
+        "error": 3,
+        "undefined": 0,
+        "skipped": 11,
+        "budget_exhausted": 5,
+        "mean": 0.9303030303030302,
+        "flagged_for_review": 0
+      },
+      "context_recall": {
+        "success": 30,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 0,
+        "mean": 0.8333333333333334,
+        "flagged_for_review": 0
+      },
+      "context_precision": {
+        "success": 4,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 0,
+        "budget_exhausted": 26,
+        "mean": 0.8785416666421532,
+        "flagged_for_review": 0
+      },
+      "factual_correctness": {
+        "success": 4,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 11,
+        "budget_exhausted": 15,
+        "mean": 0.3225,
+        "flagged_for_review": 0
+      },
+      "answer_completeness": {
+        "success": 4,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 11,
+        "budget_exhausted": 15,
+        "mean": 0.5,
+        "flagged_for_review": 0
+      },
+      "answer_relevancy": {
+        "success": 0,
+        "error": 0,
+        "undefined": 0,
+        "skipped": 30,
+        "budget_exhausted": 0,
+        "mean": null,
+        "flagged_for_review": 0
+      }
+    }
+  },
+  "judge": {
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b"
+  },
+  "provider_overrides": {
+    "TRAIN_Q465": {
+      "provider": "tokenharbor",
+      "model": "deepseek-v4.1-flash:free",
+      "retrieval_mode": "frozen baseline evidence replay",
+      "max_tokens": 3000
+    },
+    "TRAIN_Q128": {
+      "provider": "tokenharbor",
+      "model": "deepseek-v4.1-flash:free",
+      "retrieval_mode": "frozen baseline evidence replay"
+    }
+  },
+  "controlled_groq_comparison": {
+    "count": 28,
+    "model": "openai/gpt-oss-120b",
+    "baseline_outcomes": {
+      "generation_error": 7,
+      "insufficient_evidence": 6,
+      "answered": 14,
+      "needs_clarification": 1
+    },
+    "candidate_outcomes": {
+      "answered": 18,
+      "insufficient_evidence": 8,
+      "needs_clarification": 1,
+      "generation_error": 1
+    },
+    "baseline_citation_errors": 6,
+    "candidate_citation_errors": 0
+  },
+  "shared_released_answers": {
+    "count": 11,
+    "baseline_mean_model_stages": 2.909090909090909,
+    "candidate_mean_model_stages": 2,
+    "baseline_median_batch_seconds": 135.77632150000136,
+    "candidate_median_batch_seconds": 89.19630095899629
+  },
+  "paired_semantic_scores": {
+    "faithfulness": {
+      "count": 6,
+      "baseline_mean": 0.9277777777777778,
+      "candidate_mean": 0.9833333333333334
+    },
+    "factual_correctness": {
+      "count": 4,
+      "baseline_mean": 0.45,
+      "candidate_mean": 0.3225
+    },
+    "answer_completeness": {
+      "count": 4,
+      "baseline_mean": 0.4175,
+      "candidate_mean": 0.5
+    }
+  },
+  "operations": {
+    "generation_http_attempts_including_archives": 61,
+    "diagnostic_http_attempts": 3,
+    "generation_attempts_total": 64,
+    "generation_attempt_cap": 66,
+    "reported_generation_tokens_including_diagnostics": 309561,
+    "judge_recorded_http_attempts": 77,
+    "judge_attempt_cap": 120,
+    "judge_reported_tokens": 116119,
+    "judge_cache_hits": 172,
+    "judge_cache_misses": 107,
+    "code_citation_formatting_cases": 21,
+    "cost_usd": null
+  },
+  "cases": [
+    {
+      "question_id": "TRAIN_Q252",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 7,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "error",
+          "score": null,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "success",
+          "score": 0.8874999999778125,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q425",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 9,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "success",
+          "score": 0.9166666666361111,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q376",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 14,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "error",
+          "score": null,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "success",
+          "score": 0.8766666666491334,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q013",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "success",
+          "score": 0.8333333333055556,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q414",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 10,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 0.3333333333333333,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q488",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 10,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q361",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q117",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 14,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "success",
+          "score": 0.29,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q548",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "success",
+          "score": 0.9,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q310",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q230",
+      "outcome": "answered",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q353",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q599",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q365",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 16,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q388",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q417",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "error",
+          "score": null,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q556",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 9,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q093",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q152",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 9,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q046",
+      "outcome": "needs_clarification",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q045",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q106",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "faithfulness": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q188",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 21,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q090",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 11,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q560",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 16,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q007",
+      "outcome": "answered",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 6,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q334",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q260",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "groq",
+      "generation_model": "openai/gpt-oss-120b"
+    },
+    {
+      "question_id": "TRAIN_Q465",
+      "outcome": "insufficient_evidence",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 0.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "tokenharbor",
+      "generation_model": "deepseek-v4.1-flash:free"
+    },
+    {
+      "question_id": "TRAIN_Q128",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 9,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {
+        "context_recall": {
+          "state": "success",
+          "score": 1.0,
+          "needs_review": false
+        },
+        "context_precision": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "faithfulness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "factual_correctness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_completeness": {
+          "state": "budget_exhausted",
+          "score": null,
+          "needs_review": false
+        },
+        "answer_relevancy": {
+          "state": "skipped",
+          "score": null,
+          "needs_review": false
+        }
+      },
+      "judge_integrity_flags": [],
+      "generation_provider": "tokenharbor",
+      "generation_model": "deepseek-v4.1-flash:free"
+    }
+  ],
+  "limitations": [
+    "Two fallback cases use a different writer/verifier model, frozen retrieval replay and a different output allowance for Q465. Excluded from the controlled Groq comparison.",
+    "Q260 remains a provider HTTP429 failure. Q465 had an archived truncated response before its fallback retry.",
+    "Semantic samples differ and include cache-only scores. No new answer-relevancy scores. Quota-limited missing judgments are not zero scores.",
+    "Correctness and completeness references require review, including Q376 bulletin scope and Q548 claim alignment. Scores are not full-cohort accuracy.",
+    "An active judge was interrupted on user direction. Recorded usage may omit in-flight activity.",
+    "Batch timings include quota waits, local load and retries. Provider accounts changed. No isolated serving latency claim.",
+    "No reserved development questions used. No statistical significance or automatic release approval."
+  ],
+  "artifact_sha256": {
+    "manifest": "fe23546491b6a3ef1b70f8689717679baaffa1ad964ef1ed0bcc4308ff54468e",
+    "ragas": "24e701947bba7e076aad5ac70737c91e3e60cc3ea64dab6bbeb7aefbe42e5e2c",
+    "baseline_report": "d4ae1db870a7d818fa201549ad0a1039644981732704d6f66c0c0e9296f0396d"
+  }
+}

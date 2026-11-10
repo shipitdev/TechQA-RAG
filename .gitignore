@@ -142,3 +142,5 @@
 !/frontend/src/app/api/feedback/route.ts
 
 !/evaluations/results/techqa_wide_v5.json
+
+!/evaluations/results/generation_v6.json
