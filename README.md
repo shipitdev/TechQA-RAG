@@ -24,7 +24,7 @@ Question → Gemma embedding → Qdrant exact search → BGE reranking
 
 Add `LANGSMITH_API_KEY` to the server's `.env`. The default project is `techqa-rag`. Set `LANGSMITH_TRACING=false` to disable export. Traces contain questions, retrieved passages, private drafts and verification decisions, so keep this project private.
 
-Each question has a parent trace with child steps for query embedding, exact search, reranking, context selection and model calls. Inspect timings, actual token usage, cache hits, source passages, repair attempts and the released outcome. The answer workspace links to its trace. Local diagnostic logs continue to work when tracing is disabled or export fails.
+Each question has a parent trace with child steps for query embedding, exact search, reranking, context selection and model calls. Inspect timings, actual token usage, cache hits, source passages, writer/verifier decisions and the released outcome. The answer workspace links to its trace. Local diagnostic logs continue to work when tracing is disabled or export fails.
 
 The workspace streams actual activity and retrieved excerpts. Verified answers and checked OpenUI layouts appear after their release checks. The run history remains available after completion. Desktop uses a compact navigation rail, while smaller screens stack the answer and evidence.
 
@@ -182,7 +182,9 @@ Set `GROQ_API_KEY` in the root `.env`. Existing installations can use the `GROK_
 
 The model namespace starts with `openai/`, but requests go to **Groq's API**. The model is configured centrally in `rag_app/generation.py`.
 
-Generation uses remaining-token/reset headers to pace calls and keeps quota waits within request deadlines. The token estimate is approximate and applies to one provider instance, not a shared multi-worker quota. Offline case collection saves private writer/repair/verifier results and content-free HTTP statuses for diagnosis; these artifacts stay outside Git and are never returned as released answers.
+Standalone generation uses one writer and one verifier, with no factual repair loop. Code can display valid source IDs already selected by the writer while preserving answer text. The verifier then checks support, relevance, completeness and versions. Unknown source IDs fail validation. Rejected answers are withheld or request clarification. This is a two-logical-call limit for standalone generation. Transport retries, follow-up resolution and optional presentation calls are accounted separately.
+
+Generation uses remaining-token/reset headers to pace calls and keeps quota waits within request deadlines. The token estimate is approximate and applies to one provider instance, not a shared multi-worker quota. Offline case collection saves private writer/verifier results (and repair attempts in historical runs) and content-free HTTP statuses for diagnosis; these artifacts stay outside Git and are never returned as released answers.
 
 ### Prepare or restore artifacts
 
