@@ -1,4 +1,6 @@
 """Gemma dense retrieval, BGE reranking, and audited evidence packing."""
+from rag_app.tracing import trace_span
+
 import hashlib
 import importlib.metadata
 import json
@@ -276,7 +278,10 @@ class Retriever:
                    "encoder_revision": self.spec["revision"], "reranker_revision": RERANKER_REVISION,
                    "selector_sha256": _sha256(ROOT / "scripts/context_selection.py")}
         started = time.perf_counter()
-        vector = self._query_vector(question, metrics)
+        with trace_span("Embed query", inputs={"question": question}, metadata={"model": self.spec["revision"]}) as span:
+            vector = self._query_vector(question, metrics)
+            if span:
+                span.end(outputs={"dimension": len(vector), "cache_hit": bool(metrics["query_cache_hits"])})
         metrics["embed_ms"] = (time.perf_counter() - started) * 1000
 
         try:
@@ -287,8 +292,11 @@ class Retriever:
                 raise
             exact_search = {"exact": True}
         started = time.perf_counter()
-        response = self._client().query_points(collection_name=self.collection, query=vector,
-            limit=100, search_params=exact_search, with_payload=True)
+        with trace_span("Qdrant exact search", inputs={"collection": self.collection, "limit": 100}) as span:
+            response = self._client().query_points(collection_name=self.collection, query=vector,
+                limit=100, search_params=exact_search, with_payload=True)
+            if span:
+                span.end(outputs={"candidate_count": len(response.points)})
         metrics["search_ms"] = (time.perf_counter() - started) * 1000
         points = response.points
         candidate_ids = []
@@ -312,14 +320,20 @@ class Retriever:
             raise ValueError("Qdrant returned no compatible TechQA candidates")
 
         started = time.perf_counter()
-        scores = self._rerank_scores(question, chunks, docs, candidate_ids, metrics)
-        ranked, rank_metrics = rerank_candidates(candidate_ids, chunks, docs, scores, depth=20)
+        with trace_span("Rerank evidence", inputs={"question": question, "candidate_count": len(candidate_ids)}) as span:
+            scores = self._rerank_scores(question, chunks, docs, candidate_ids, metrics)
+            ranked, rank_metrics = rerank_candidates(candidate_ids, chunks, docs, scores, depth=20)
+            if span:
+                span.end(outputs={"ranked_chunk_ids": ranked, "cache_hits": metrics["pair_cache_hits"], "cache_misses": metrics["pair_cache_misses"]})
         metrics["rerank_ms"] = (time.perf_counter() - started) * 1000
         metrics.update(rank_metrics)
 
         started = time.perf_counter()
-        packed = pack_evidence(ranked, chunks, docs, self._tokenizer(), budget=4096,
-                               per_doc=5, max_docs=8, skip_metadata=True, include_notes=True)
+        with trace_span("Pack context", inputs={"budget": 4096, "per_document": 5, "max_documents": 8}) as span:
+            packed = pack_evidence(ranked, chunks, docs, self._tokenizer(), budget=4096,
+                                   per_doc=5, max_docs=8, skip_metadata=True, include_notes=True)
+            if span:
+                span.end(outputs={"tokens": packed["tokens"], "diagnostics": packed["diagnostics"]})
         metrics["pack_ms"] = (time.perf_counter() - started) * 1000
         metrics["dense_candidates"] = len(candidate_ids)
         metrics["context_tokens"] = packed["tokens"]

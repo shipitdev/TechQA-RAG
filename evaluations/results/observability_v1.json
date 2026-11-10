@@ -1,0 +1,207 @@
+{
+  "schema": "saved_case_checks_v1",
+  "cohort_id": "44dd958d19897a7639d9a2cb420e53270b2bea37328d2ee42a9cd7d124e9f97c",
+  "case_count": 12,
+  "outcomes": {
+    "answered": 3,
+    "generation_error": 9
+  },
+  "metrics": {
+    "answer_coverage": 0.25,
+    "selected_gold_document_hit_rate": 0.9166666666666666,
+    "citation_contract_pass_rate": 1.0
+  },
+  "denominators": {
+    "selected_gold_document_hit_rate": 12,
+    "citation_contract_pass_rate": 3
+  },
+  "operations": {
+    "generation_seconds": [
+      53.6789352909982,
+      89.72582383299596,
+      94.20225566600857,
+      46.86580899999535,
+      2.3957592910010135,
+      2.1422123329975875,
+      2.1818811670091236,
+      2.2330157079995843,
+      2.2595714589988347,
+      2.226248499995563,
+      1.9820034590084106,
+      0.29575791700335685
+    ],
+    "generation_reported_tokens": 33230,
+    "generation_usage_cases": 12,
+    "cost_usd": null
+  },
+  "cases": [
+    {
+      "question_id": "TRAIN_Q252",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 7,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q425",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 9,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q376",
+      "outcome": "answered",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 14,
+      "citation_contract": {
+        "state": "checked",
+        "pass": true,
+        "reason": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q013",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q414",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 10,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q488",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 10,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q361",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 12,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q117",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 14,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q548",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q310",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q230",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 0,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    },
+    {
+      "question_id": "TRAIN_Q353",
+      "outcome": "generation_error",
+      "selected_gold_document_hit": 1,
+      "selected_passage_count": 8,
+      "citation_contract": {
+        "state": "skipped",
+        "pass": null
+      },
+      "ragas": {},
+      "judge_integrity_flags": []
+    }
+  ],
+  "limits": [
+    "Selected-document hit is not search Recall@K or semantic evidence recall.",
+    "Citation validity does not establish claim support.",
+    "Version flags are heuristics for review; raw scores are never adjusted.",
+    "No style, toxicity/PII, live feedback or drift scores are computed."
+  ],
+  "scope": "Fixed seeded random answerable training tuning sample; standalone canonical pipeline; no memory or generated layout evaluation.",
+  "selection": {
+    "seed": 20261110,
+    "planned": 12,
+    "attempted": 12
+  },
+  "provider_http_attempts": 15,
+  "limitations": [
+    "Nine provider quota failures are infrastructure errors, not answer-quality failures.",
+    "Three released answers passed citation syntax/source-ID checks. Semantic correctness was not measured in this batch.",
+    "Selected gold article presence is not semantic context recall.",
+    "No new RAGAS judge calls.",
+    "Collector was fixed after this run to stop on the first quota failure.",
+    "No reserved development questions were used."
+  ]
+}

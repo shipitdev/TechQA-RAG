@@ -11,7 +11,7 @@
 .gen-answer-card h3, .gen-procedure h3, .gen-configuration h3, .gen-notice h3 { margin: 0; color: #18212b; font-size: 15px; font-weight: 620; line-height: 1.4; }
 .gen-answer-card p, .gen-procedure li p, .gen-notice p { margin: 7px 0 0; color: #404b57; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
 .gen-source-markers { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 7px; vertical-align: baseline; }
-.gen-source-markers a { color: #24588c; font-size: 10px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.gen-source-markers a { color: #24588c; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .gen-source-markers a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .gen-procedure { padding: 16px 18px; }
 .gen-procedure > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -31,10 +31,10 @@
 .gen-config-row dt small { display: block; margin-top: 3px; color: #77818d; font-size: 11px; font-weight: 400; }
 .gen-config-row dd { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 10px; margin: 0; }
 .gen-config-row code { min-width: 0; color: #222d39; font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
-.gen-copy { flex: 0 0 auto; padding: 3px 7px; border: 1px solid #dce2e8; border-radius: 5px; background: #fff; color: #52606e; font-size: 10px; line-height: 1.5; }
+.gen-copy { flex: 0 0 auto; padding: 3px 7px; border: 1px solid #dce2e8; border-radius: 5px; background: #fff; color: #52606e; font-size: 11px; line-height: 1.5; }
 .gen-copy:hover { border-color: #aabbd0; color: #174f9c; }
 .gen-code { min-width: 0; margin: 0; overflow: hidden; border-radius: 7px; background: #172330; color: #edf3f8; }
-.gen-code figcaption { display: flex; min-height: 33px; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 10px; background: #202e3c; color: #b7c4d0; font-family: var(--mono); font-size: 10px; }
+.gen-code figcaption { display: flex; min-height: 33px; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 10px; background: #202e3c; color: #b7c4d0; font-family: var(--mono); font-size: 11px; }
 .gen-code pre { max-width: 100%; margin: 0; padding: 12px; overflow: auto; color: inherit; background: transparent; font-size: 12px; line-height: 1.65; tab-size: 2; }
 .gen-code code { color: inherit; font-family: var(--mono); white-space: pre; }
 .gen-code .gen-copy { border-color: #465564; background: #283746; color: #d6e0e8; }
@@ -51,7 +51,7 @@
 .gen-table td { color: #34404c; font-size: 12px; overflow-wrap: anywhere; }
 .gen-excerpt { margin: 0; padding: 14px 17px; border-left: 3px solid #d5e3f5; }
 .gen-excerpt p { margin: 0; color: #4d5863; font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
-.gen-excerpt cite { display: block; margin-top: 8px; color: #7e8893; font-size: 10px; font-style: normal; }
+.gen-excerpt cite { display: block; margin-top: 8px; color: #7e8893; font-size: 11px; font-style: normal; }
 .gen-tab-list { display: flex; gap: 4px; padding: 7px 8px 0; overflow-x: auto; border-bottom: 1px solid #e7ebef; }
 .gen-tab-list [role="tab"] { flex: 0 0 auto; min-height: 36px; padding: 0 11px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #697584; font-size: 12px; }
 .gen-tab-list [role="tab"][aria-selected="true"] { border-bottom-color: #1d5fbf; color: #174f9c; font-weight: 620; }
@@ -83,3 +83,6 @@
 .gen-stack-row > * { flex: 1 1 0; min-width: 0; }
 @media (max-width: 700px) { .gen-stack-row { flex-direction: column; } .gen-stack-row > * { width: 100%; } .gen-answer-card { padding: 18px; } .gen-answer-card h3 { font-size: 20px; } }
 .gen-review { min-height: 28px; }
+.gen-answer-card { background: #fafafa; border-color: #e6e6e6; border-left-color: #1d5fbf; }
+.gen-answer-card h3, .gen-procedure h3, .gen-configuration h3, .gen-notice h3 { font-weight: 500; }
+.gen-answer-card p, .gen-procedure li p, .gen-notice p { color: #333; font-size: 14px; }
