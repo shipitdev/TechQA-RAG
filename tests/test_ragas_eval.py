@@ -198,3 +198,14 @@ def test_collection_stops_after_first_quota_error(tmp_path, monkeypatch):
     evaluation.collect(args)
     assert len(attempts) == 2
     assert not (output / 'TRAIN_Q2.json').exists()
+
+
+def test_unreviewed_feedback_is_rejected_before_judging(tmp_path):
+    pytest.importorskip('ragas')
+    import json
+    from scripts.eval_ragas import run
+    qid = 'FEEDBACK_' + 'a' * 32
+    (tmp_path / 'manifest.json').write_text(json.dumps({'kind': 'reviewed_user_feedback', 'question_ids': [qid]}))
+    (tmp_path / (qid + '.json')).write_text(json.dumps({'question_id': qid, 'review_status': 'pending', 'reference': 'Unreviewed claim'}))
+    with pytest.raises(ValueError, match='approved references'):
+        asyncio.run(run(SimpleNamespace(cases=tmp_path, limit=1)))

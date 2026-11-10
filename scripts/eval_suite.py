@@ -68,8 +68,10 @@ def build_report(cases, ragas=None):
     rows, citations, hits, seconds = [], [], [], []
     tokens = 0
     for c in cases:
-        hit = int(any(s['document_id'] == c['reference_provenance']['document_id'] for s in c['sources']))
-        hits.append(hit)
+        gold_document = c['reference_provenance'].get('document_id')
+        hit = int(any(s.get('document_id') == gold_document for s in c['sources'])) if gold_document else None
+        if hit is not None:
+            hits.append(hit)
         citation = {'state': 'skipped', 'pass': None}
         if c['status'] == 'answered':
             error = AnswerGenerator._citation_error({'answer': c['response'], 'citations': c['citations']},
@@ -97,7 +99,7 @@ def build_report(cases, ragas=None):
     report = {'schema': CONTRACT, 'cohort_id': fingerprint(identity), 'case_count': len(cases),
               'outcomes': dict(Counter(c['status'] for c in cases)),
               'metrics': {'answer_coverage': sum(c['status'] == 'answered' for c in cases) / len(cases),
-                          'selected_gold_document_hit_rate': sum(hits) / len(hits),
+                          'selected_gold_document_hit_rate': sum(hits) / len(hits) if hits else None,
                           'citation_contract_pass_rate': sum(citations) / len(citations) if citations else None},
               'denominators': {'selected_gold_document_hit_rate': len(hits), 'citation_contract_pass_rate': len(citations)},
               'operations': {'generation_seconds': seconds, 'generation_reported_tokens': tokens,

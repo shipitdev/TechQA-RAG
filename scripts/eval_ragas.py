@@ -35,7 +35,7 @@ class RequestBudget:
         self.limit, self.sent, self.exhausted = limit, 0, False
 
     def consume(self):
-        if self.sent >= self.limit:
+        if self.exhausted or self.sent >= self.limit:
             self.exhausted = True
             raise BudgetExceeded('Evaluation HTTP request budget exhausted')
         self.sent += 1
@@ -256,11 +256,19 @@ async def run(args):
 
     manifest = json.loads((args.cases / 'manifest.json').read_text())
     ids = manifest['question_ids'][:args.limit]
-    if len(set(ids)) != len(ids) or any(not qid.startswith('TRAIN_') or not qid.replace('_', '').isalnum() for qid in ids):
-        raise ValueError('Invalid training case IDs')
+    feedback_cohort = manifest.get('kind') == 'reviewed_user_feedback'
+    canary_cohort = manifest.get('kind') == 'judge_canaries'
+    prefix = {'reviewed_user_feedback': 'FEEDBACK_', 'judge_canaries': 'CANARY_'}.get(manifest.get('kind'), 'TRAIN_')
+    if len(set(ids)) != len(ids) or any(not qid.startswith(prefix) or not qid.replace('_', '').isalnum() for qid in ids):
+        raise ValueError('Invalid evaluation case IDs')
     cases = [json.loads((args.cases / (qid + '.json')).read_text()) for qid in ids]
     if not cases or any(c['question_id'] != qid for c, qid in zip(cases, ids)):
         raise ValueError('Case membership mismatch')
+    if feedback_cohort and any(c.get('review_status') != 'approved' or
+                               c.get('reference_provenance', {}).get('view') != 'human_reviewed_feedback_v1' or
+                               not c.get('reference', '').strip() or
+                               not c.get('reference_provenance', {}).get('review_notes', '').strip() for c in cases):
+        raise ValueError('Feedback evaluation requires approved references and review notes')
     key = os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')
     if not key and args.max_requests:
         raise ValueError('Groq key missing')
@@ -268,7 +276,7 @@ async def run(args):
     budget = RequestBudget(args.max_requests)
     settings = {'provider': 'groq', 'judge': args.judge, 'temperature': 0, 'reasoning_effort': 'low',
                 'transport': {'sdk_max_retries': 3, 'retry_after_buffer_seconds': 2, 'minimum_retry_seconds': 5},
-                'max_tokens': 4096, 'strictness': 3, 'timeout_per_metric': args.timeout,
+                'max_tokens': 2048, 'strictness': 3, 'timeout_per_metric': args.timeout,
                 'packages': {p: importlib.metadata.version(p) for p in
                     (('ragas', 'openai', 'instructor', 'langchain-community') +
                      (('sentence-transformers', 'torch', 'transformers', 'torchvision') if retriever else ()))},
@@ -297,12 +305,16 @@ async def run(args):
         if response.status_code == 429:
             delay = retry_delay(response.headers)
             http_calls[response.request.extensions['eval_call_index']]['retry_after_seconds'] = delay
-            response.headers['retry-after'] = str(delay)
+            if delay >= args.timeout:
+                budget.exhausted = True
+                raise BudgetExceeded('Provider quota reset exceeds metric deadline')
             print(f'  Groq quota: waiting about {delay:g}s before retry', flush=True)
+            await asyncio.sleep(delay)
+            response.headers['retry-after'] = '0'
 
     client = AsyncOpenAI(api_key=key or 'cache-only-no-key', base_url='https://api.groq.com/openai/v1', timeout=60, max_retries=3,
         http_client=httpx.AsyncClient(event_hooks={'request': [request_hook], 'response': [response_hook]}))
-    backend = llm_factory(args.judge, client=client, temperature=0, max_tokens=4096, reasoning_effort='low')
+    backend = llm_factory(args.judge, client=client, temperature=0, max_tokens=2048, reasoning_effort='low')
 
     class CachedJudge(InstructorBaseRagasLLM):
         def __init__(self, draws_per_prompt=1):
@@ -341,7 +353,7 @@ async def run(args):
     report = {'created_at': datetime.now(timezone.utc).isoformat(), 'settings': settings,
               'manifest': manifest, 'selected_question_ids': ids, 'selected_metrics': list(scorers),
               'cases_sha256': {c['question_id']: sha256(args.cases / (c['question_id'] + '.json')) for c in cases},
-              'limitations': ['training tuning pilot, not final development', 'same model family writer/judge; manual review needed',
+              'limitations': [('Synthetic judge calibration canaries' if canary_cohort else 'Reviewed feedback regression cohort; selected by users and reviewers' if feedback_cohort else 'training tuning pilot, not final development'), 'same model family writer/judge; manual review needed',
                               'answer metrics conditional on released answers; no global refusal accuracy', 'cost not calculated; actual token usage recorded']}
     started = time.perf_counter()
     try:

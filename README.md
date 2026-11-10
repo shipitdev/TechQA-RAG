@@ -42,6 +42,22 @@ Publishing replays saved outputs into a LangSmith experiment with response statu
 
 The [November 10 observability batch](evaluations/results/observability_v1.json) selected **12 training questions**. Retrieval selected the labeled article for **11/12**. **3 answers** were released and passed citation-format checks. **9 provider quota failures** prevented completion. The run used **15 HTTP attempts and 33,230 reported tokens**. This batch establishes dashboard visibility and exposes a quota-handling issue, which is now covered by a stop-on-quota regression test. New semantic RAGAS scores await available provider quota.
 
+## Feedback and future evaluation cases
+
+Every completed response offers Helpful and Not helpful, with an optional explanation. Sending feedback saves the question, resolved follow-up, answer, sources, private diagnostics and pipeline versions in `data/app/feedback/`. These private records persist after the session ends. A stable feedback record also attaches the rating and comment to the LangSmith trace. If cloud synchronization fails, the local record remains available and `python -m scripts.feedback_cases sync` retries it.
+
+Review the saved case against its sources, write a checked reference answer in a local text file, then approve and export it.
+
+```bash
+python -m scripts.feedback_cases approve --run-id RUN_UUID \
+  --reference-file /path/to/checked-answer.txt --notes "Verified against the original source"
+python -m scripts.feedback_cases export --output data/ragas/feedback_review_v1
+python -m scripts.eval_ragas run --cases data/ragas/feedback_review_v1 \
+  --metrics faithfulness factual_correctness answer_completeness --limit 5 --max-requests 20
+```
+
+Approval and review notes are required for feedback-based RAGAS evaluation. Use these cases as a regression set alongside the fixed training sample. Human votes and comments identify examples for review, while checked references support correctness scoring. Human ratings can also help assess and improve judge agreement. Each export uses a new directory to preserve the earlier evaluation version.
+
 ## Evaluation suite
 
 ![Evaluation layers: components, pipeline, application, regression and planned monitoring](evaluations/overview.svg)
@@ -54,7 +70,7 @@ The [November 10 observability batch](evaluations/results/observability_v1.json)
 | Pipeline | Selected context precision/recall, answer faithfulness and relevancy | [RAGAS runner](scripts/eval_ragas.py), measured on the pilot below. Reference text stays outside inference. |
 | Application | Reference-based correctness and completeness; citation validity; withholding and layout contracts; recorded timing/tokens/cache use | Correctness = RAGAS `FactualCorrectness(mode="f1")`; completeness = its `mode="recall"` proxy. Both are opt-in and not yet benchmarked. [Free saved-case checks](scripts/eval_suite.py), [API contracts](tests/test_app_api.py), [layout checks](frontend/tests/genui-contract.test.mjs) are implemented. |
 | Regression | Re-run a fixed case set, then inspect per-case differences | [Comparison CLI](scripts/eval_suite.py) rejects changed cohorts/references. Semantic comparisons also require matching judge settings and exclude scores flagged for review. |
-| Online | Sampled live judging, feedback, drift and failure-to-test-set promotion | **Planned.** Content-free operational logs exist; live quality scoring, Langfuse integration and automated feedback loops do not. |
+| Online | User feedback, reviewed regression cases, sampled judging and drift | Helpful/unhelpful votes and optional comments save the run for review and sync to LangSmith. Reviewed references can be exported for RAGAS. Sampled live judging and drift monitoring remain planned. |
 
 Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Existing origin/session, withholding and generated-component checks cover specific application contracts; they are not a comprehensive safety benchmark. Optional semantic metrics compare against available references, which may omit valid alternative answers.
 

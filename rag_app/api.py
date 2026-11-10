@@ -13,7 +13,7 @@ import uuid
 from collections import defaultdict, deque
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from dotenv import load_dotenv
 from rag_app.state import SessionStore, AnswerCache
 from rag_app.observability import persist_run
@@ -28,14 +28,23 @@ class Ask(BaseModel):
     regenerate: bool = False
 
 
+class Feedback(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    request_id: uuid.UUID
+    helpful: bool = Field(strict=True)
+    comment: str = Field(default='', max_length=2000)
+
+
 def create_app(retriever=None, generator=None, resolver=None):
     app = FastAPI(title='TechQA evidence workspace')
     serial = threading.Lock()
     admission = threading.BoundedSemaphore(5)
     sessions = SessionStore()
     answers = AnswerCache()
+    feedback_runs = AnswerCache(ttl_seconds=1800, max_entries=256, max_bytes=32 * 1024**2)
     limits = defaultdict(deque)
     limiter_lock = threading.Lock()
+    feedback_lock = threading.Lock()
     runtime = {'retriever': retriever, 'generator': generator, 'resolver': resolver}
 
     def pipeline_version():
@@ -110,11 +119,28 @@ def create_app(retriever=None, generator=None, resolver=None):
         if origin and origin != allowed:
             raise HTTPException(403, 'Origin not allowed')
         sid = request.cookies.get('techqa_session', '')
-        sessions.end(sid); answers.clear_session(sid)
+        sessions.end(sid); answers.clear_session(sid); feedback_runs.clear_session(sid)
         from fastapi.responses import JSONResponse
         response = JSONResponse({'status': 'cleared'})
         response.delete_cookie('techqa_session')
         return response
+
+    @app.post('/feedback')
+    def feedback(body: Feedback, request: Request):
+        origin = request.headers.get('origin')
+        if origin and origin != os.getenv('APP_ORIGIN', 'http://localhost:3000'):
+            raise HTTPException(403, 'Origin not allowed')
+        session = sessions.get(request.cookies.get('techqa_session', ''))
+        snapshot = feedback_runs.get(session.id, str(body.request_id), session_expires_at=session.expires_at) if session else None
+        if snapshot is None:
+            raise HTTPException(404, 'This run is unavailable in the current session')
+        from rag_app.feedback import record_feedback
+        try:
+            with feedback_lock:
+                record = record_feedback(ROOT, snapshot, body.helpful, body.comment.strip())
+        except OSError:
+            raise HTTPException(503, 'Feedback could not be saved. Please retry.') from None
+        return {'status': 'saved', 'review_status': record['review_status']}
 
     @app.post('/ask')
     async def ask(body: Ask, request: Request):
@@ -268,6 +294,11 @@ def create_app(retriever=None, generator=None, resolver=None):
                         pass
                     result['metrics']['total_ms'] = round((time.monotonic() - started) * 1000, 2)
                     root_run.end(outputs=result)
+                feedback_runs.put(session.id, rid, {
+                    'question': body.question, 'resolved_question': question, 'result': result,
+                    'pipeline_version': identity['pipeline'], 'prompt_version': PROMPT_VERSION,
+                    'model': MODEL, 'index': identity['index'], 'private_trace': private_trace,
+                }, session_expires_at=session.expires_at)
                 emit('final', result)
                 write_metrics({'request_id': rid, 'status': result['status'], 'metrics': result['metrics']},private_trace)
                 completed = True
