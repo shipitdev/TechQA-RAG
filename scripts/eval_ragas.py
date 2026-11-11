@@ -97,22 +97,30 @@ async def cached_judgment(generate, settings, prompt, response_model, directory,
     path = directory / (key + '.json')
     started = time.perf_counter()
     offset = len(http_calls)
+    from rag_app.tracing import trace_span, model_usage
     if path.exists():
         stored = json.loads(path.read_text())
         result = response_model.model_validate(stored['output'])
+        with trace_span('RAGAS / Cached / ' + response_model.__name__, inputs={'cache_key': key}) as span:
+            if span:
+                span.end(outputs={'decision': stored['output'], 'cache_hit': True, 'http_attempts': 0})
         journal.append({'cache_hit': True, 'key': key, 'decision': stored['output'],
                         'seconds': time.perf_counter() - started, 'http_calls': []})
         return result
     try:
-        from rag_app.tracing import trace_span
-        with trace_span('RAGAS / Judge', inputs={'prompt': prompt}, run_type='llm',
-                        metadata={'ls_provider': settings.get('provider'), 'ls_model_name': settings.get('judge')} ) as span:
-            result = await generate(prompt, response_model)
-            if span:
-                calls = http_calls[offset:]
-                span.end(outputs={**result.model_dump(mode='json'), 'usage_metadata': {
-                    'input_tokens': sum((c.get('usage') or {}).get('prompt_tokens') or 0 for c in calls),
-                    'output_tokens': sum((c.get('usage') or {}).get('completion_tokens') or 0 for c in calls)}})
+        with trace_span('RAGAS / Judge / ' + response_model.__name__, inputs={'prompt': prompt}, run_type='llm',
+                        metadata={'ls_provider': settings.get('provider'), 'ls_model_name': settings.get('judge'),
+                                  'thinking': settings.get('thinking')}) as span:
+            try:
+                result = await generate(prompt, response_model)
+            finally:
+                if span:
+                    calls = http_calls[offset:]
+                    usage = model_usage([c.get('usage') or {} for c in calls],
+                                        provider=settings.get('provider'), model=settings.get('judge', ''))
+                    span.set(usage_metadata=usage)
+                    span.end(outputs={'decision': result.model_dump(mode='json') if 'result' in locals() else None,
+                                      'usage_metadata': usage, 'cache_hit': False, 'http_attempts': len(calls)})
         save(path, {'output': result.model_dump(mode='json')})
         return result
     finally:
@@ -121,35 +129,68 @@ async def cached_judgment(generate, settings, prompt, response_model, directory,
             'seconds': time.perf_counter() - started, 'http_calls': http_calls[offset:]})
 
 
+def metric_verdict(metric):
+    """A score is a measurement. Release thresholds are reviewed separately."""
+    calls = metric.get('judge_calls', [])
+    return {k: v for k, v in metric.items() if k != 'judge_calls'} | {
+        'judge_steps': len(calls), 'cache_hits': sum(c.get('cache_hit', False) for c in calls),
+        'http_attempts': sum(len(c.get('http_calls', [])) for c in calls)}
+
+
 async def evaluate_case(case, scorers, *, timeout=300, journal=None, budget=None):
+    from rag_app.tracing import trace_span, evaluation_thread
     results = {}
-    for name, scorer in scorers.items():
-        started = time.perf_counter()
-        offset = len(journal) if journal is not None else 0
-        if (('retrieved_contexts' in FIELDS[name] and not case['retrieved_contexts']) or
-                ('response' in FIELDS[name] and case['status'] != 'answered')):
-            results[name] = {'state': 'skipped', 'score': None, 'reason': 'no_context_or_no_released_answer'}
-            continue
-        try:
-            from rag_app.tracing import trace_span
+    metadata = {'thread_id': evaluation_thread(case), 'question_id': case['question_id'],
+                'layer': case.get('evaluation_layer', 'pipeline'),
+                'source_trace_id': case.get('langsmith_run_id'),
+                'evaluation_run_id': case.get('evaluation_run_id'), 'variant': case.get('evaluation_variant')}
+    with trace_span('RAGAS / ' + case.get('evaluation_variant', 'Case') + ' / ' + case['question_id'],
+                    inputs={'question_id': case['question_id'], 'question': case['user_input'], 'response': case.get('response', '')},
+                    metadata=metadata, project_name=case.get('evaluation_project_name') or os.getenv('LANGSMITH_EVAL_PROJECT', 'techqa-evaluations'),
+                    reference_example_id=case.get('trace_reference_example_id')) as case_run:
+        if case.get('generation'):
+            with trace_span('Pipeline / Saved generation', inputs={'source_trace_id': case.get('langsmith_run_id'),
+                'evaluation_run_id': case.get('evaluation_run_id'), 'variant': case.get('evaluation_variant')},
+                            metadata={'replay': True}) as saved_run:
+                for event in case['generation'].get('trace', []):
+                    with trace_span('Pipeline / ' + event['stage'].title(), inputs={'stage': event['stage']},
+                                    metadata={'replay': True}) as stage_run:
+                        if stage_run:
+                            stage_run.end(outputs={'decision': event.get('result'), 'error_type': event.get('error_type'),
+                                                   'recorded_milliseconds': event.get('milliseconds')})
+                if saved_run:
+                    saved_run.end(outputs={'status': case['status'], 'response': case.get('response', ''),
+                                           'recorded_generation_seconds': case['generation'].get('seconds'),
+                                           'new_generation_calls': 0})
+        for name, scorer in scorers.items():
+            started = time.perf_counter()
+            offset = len(journal) if journal is not None else 0
             with trace_span('RAGAS / ' + name, inputs={'question_id': case['question_id']},
-                            metadata={'layer': case.get('evaluation_layer', 'pipeline')}) as metric_run:
-                async with asyncio.timeout(timeout):
-                    result = await scorer.ascore(**metric_inputs(name, case))
-                value = float(result.value)
+                            metadata=metadata) as metric_run:
+                if (('retrieved_contexts' in FIELDS[name] and not case['retrieved_contexts']) or
+                        ('response' in FIELDS[name] and case['status'] != 'answered')):
+                    results[name] = {'state': 'skipped', 'score': None, 'reason': 'no_context_or_no_released_answer'}
+                else:
+                    try:
+                        async with asyncio.timeout(timeout):
+                            result = await scorer.ascore(**metric_inputs(name, case))
+                        value = float(result.value)
+                        results[name] = {'state': 'success' if math.isfinite(value) else 'undefined',
+                                         'score': value if math.isfinite(value) else None}
+                    except Exception as exc:
+                        results[name] = {'state': 'budget_exhausted' if budget and budget.exhausted else 'error',
+                                         'score': None, 'error_type': type(exc).__name__}
+                results[name]['seconds'] = round(time.perf_counter() - started, 3)
+                if journal is not None:
+                    results[name]['judge_calls'] = journal[offset:]
                 if metric_run:
-                    metric_run.end(outputs={'score': value if math.isfinite(value) else None})
-            results[name] = {'state': 'success' if math.isfinite(value) else 'undefined',
-                             'score': value if math.isfinite(value) else None}
-        except Exception as exc:
-            # Provider messages can contain inputs/headers; retain a safe category only.
-            results[name] = {'state': 'budget_exhausted' if budget and budget.exhausted else 'error',
-                             'score': None, 'error_type': type(exc).__name__}
-        results[name]['seconds'] = round(time.perf_counter() - started, 3)
-        if journal is not None:
-            results[name]['judge_calls'] = journal[offset:]
-        print(f"  {name}: {results[name]['state']} {results[name]['score']}", flush=True)
-    return {'question_id': case['question_id'], 'status': case['status'], 'metrics': results}
+                    metric_run.end(outputs=metric_verdict(results[name]))
+            print(f"  {name}: {results[name]['state']} {results[name]['score']}", flush=True)
+        if case_run:
+            case_run.end(outputs={'response_status': case['status'], 'response': case.get('response', ''),
+                                  'metrics': {k: metric_verdict(v) for k, v in results.items()}})
+    return {'question_id': case['question_id'], 'status': case['status'], 'metrics': results,
+            'langsmith_evaluation_run_id': str(case_run.id) if case_run else None}
 
 
 def summarize(rows):
@@ -194,6 +235,7 @@ def collect(args):
     generator = AnswerGenerator(provider.json_call)
     identity = {'split_sha256': sha256(split_path), 'source_hashes': split['source_hashes'],
                 'index': retriever.index_identity(), 'model': provider.model,
+                'thinking': getattr(provider, 'thinking', None), 'max_tokens': getattr(provider, 'max_tokens', None),
                 'code': {str(p.relative_to(ROOT)): sha256(p) for p in sorted((ROOT / 'rag_app').glob('*.py'))},
                 'scope': 'standalone canonical answer; no memory, answer cache, UI or reference labels in inference'}
     args.output.mkdir(parents=True, exist_ok=True)
@@ -221,6 +263,8 @@ def collect(args):
             question = q['QUESTION_TITLE'] + '\n' + q['QUESTION_TEXT']
             print(q['QUESTION_ID'] + ': retrieval → writer → verifier', flush=True)
             with trace_span('Pipeline / Evaluation / ' + q['QUESTION_ID'], inputs={'question': question}, metadata={'question_id': q['QUESTION_ID'], 'evaluation': True, 'split': 'training_tuning', 'model': provider.model, 'index': identity['index']}) as run:
+                if run:
+                    run.add_metadata({'thread_id': f"TechQA / pipeline / {q['QUESTION_ID']} / {run.id}"})
                 started = time.perf_counter()
                 with trace_span('Retrieve and select evidence', inputs={'question': question}) as retrieval_run:
                     retrieved = retriever.retrieve(question)
@@ -243,6 +287,10 @@ def collect(args):
                                       'provider_calls': list(provider.usage), 'error_type': answer.get('error_type'),
                                       'http_attempts': list(provider.attempts), 'trace': list(generator.trace)}
                 case['langsmith_run_id'] = str(run.id) if run else None
+                from rag_app.tracing import evaluation_thread
+                case['thread_id'] = evaluation_thread(case)
+                if run:
+                    run.add_metadata({'thread_id': case['thread_id']})
                 if run:
                     run.end(error=answer.get('error_type'), outputs={'status': case['status'], 'response': case['response'], 'sources': case['sources'], 'generation': {key: value for key, value in case['generation'].items() if key != 'trace'}})
                 save(path, case)
@@ -386,7 +434,7 @@ async def run(args):
               'manifest': manifest, 'selected_question_ids': ids, 'selected_metrics': list(scorers),
               'cases_sha256': {c['question_id']: sha256(args.cases / (c['question_id'] + '.json')) for c in cases},
               'limitations': [('Synthetic judge calibration canaries' if canary_cohort else 'Reviewed feedback regression cohort; selected by users and reviewers' if feedback_cohort else 'training tuning pilot, not final development'), 'same model family writer/judge; manual review needed',
-                              'answer metrics conditional on released answers; no global refusal accuracy', 'cost not calculated; actual token usage recorded']}
+                              'answer metrics conditional on released answers; no global refusal accuracy', 'free-route zero billing reported separately from standard-route budget value; other billing unknown unless configured']}
     started = time.perf_counter()
     try:
         for case in cases:

@@ -408,3 +408,18 @@ def test_malformed_provider_payload_is_a_categorized_error():
     with unittest.TestCase().assertRaises(GenerationError) as error:
         provider.json_call("test", {})
     assert error.exception.category == "invalid_response"
+
+
+def test_reasoning_switch_is_explicit_and_validated():
+    from unittest.mock import Mock
+    from rag_app.generation import GroqREST
+    import pytest
+    response = Mock(status_code=200, headers={})
+    response.json.return_value = {'choices': [{'finish_reason': 'stop', 'message': {'content': '{}'}}], 'usage': {}}
+    post = Mock(return_value=response)
+    p = GroqREST(api_key='test', provider='tokenharbor', post=post, thinking='enabled')
+    p.json_call('test', {'type': 'OBJECT', 'properties': {}})
+    assert post.call_args.kwargs['json']['thinking'] == {'type': 'enabled'}
+    assert p.usage[0]['thinking'] == 'enabled'
+    with pytest.raises(ValueError):
+        GroqREST(api_key='test', thinking='invalid')

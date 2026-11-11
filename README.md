@@ -116,6 +116,15 @@ Set `EVAL_BUDGET_FILE` to a shared ledger path to enforce the $0.50 token-value 
 
 Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Existing origin/session, withholding and generated-component checks cover specific application contracts; they are not a comprehensive safety benchmark. Optional semantic metrics compare against available references, which may omit valid alternative answers.
 
+### Reading evaluation traces
+
+- Each question opens as one chain. Expand the saved pipeline stages, then each RAGAS metric and its judge steps. Conversation turns share a thread ID. Imported child timestamps have zero duration; their outputs retain the original measured duration.
+- Each metric reports its score and status. The categorical `ragas_status_*` fields show success, skipped, not run, error, budget exhausted, undefined or needs review. A missing score stays empty. A zero score records a completed judgment with a zero result.
+- Context precision judges each passage, so seven passages can require seven judge calls. Faithfulness uses statement extraction and checking. Relevancy uses three generated questions. Reference F1 uses claim extraction and checking in both directions. Cached judgments report zero HTTP calls.
+- The TokenHarbor free route reports explicit `$0.00` billed cost. The shared budget ledger separately tracks standard-route token value. Unknown prices stay unknown. Cache and available reasoning-token counts are recorded.
+- Completed traces rejected further updates in the current backend. Earlier flat imports remain archived. Replacement imports preserve saved answers and scores, with complete verdicts and parent/child links created together.
+- Set `RAG_THINKING=disabled` for the current serving configuration. Use `enabled` only in a separately labeled fixed-evidence comparison. Generation mode is part of the answer-cache identity. The judge stays fixed while generation reasoning changes.
+
 ### Bounded generation comparison with prompt version 6
 
 The [saved comparison](evaluations/results/generation_v6.json) keeps the same 30 questions, references and source passages. The updated flow uses one writer, code-only display of valid writer-selected citation IDs and one verifier. A failed factual check withholds the answer. Code formatted citations in **21/30** cases, so prompt changes alone did not solve citation output.

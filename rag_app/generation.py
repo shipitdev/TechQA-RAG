@@ -1,7 +1,7 @@
 """Private draft generation and evidence verification using Groq."""
 
 from __future__ import annotations
-from rag_app.tracing import trace_span
+from rag_app.tracing import trace_span, model_usage
 
 import json
 import math
@@ -57,10 +57,13 @@ class GroqREST:
     def __init__(self, api_key: str | None = None, *, model: str = MODEL,
                  timeout: float = 75, post: Callable[..., Any] = httpx.post,
                  provider: str = "groq", base_url: str = "https://api.groq.com/openai/v1",
-                 max_tokens: int = 1500):
+                 max_tokens: int = 1500, thinking: str = "disabled"):
         self.api_key = api_key if api_key is not None else os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
         if not self.api_key:
             raise GenerationError("Model provider API key is not configured")
+        if thinking not in {"enabled", "disabled"}:
+            raise ValueError("thinking must be enabled or disabled")
+        self.thinking = thinking
         self.provider, self.base_url, self.max_tokens = provider, base_url.rstrip("/"), max_tokens
         self.model, self.timeout, self.post = model, min(timeout, 120 if provider == "tokenharbor" else 75), post
         self.usage: list[dict[str, Any]] = []
@@ -83,19 +86,16 @@ class GroqREST:
         messages = ([{"role": "system", "content": SYSTEM_RULES},
                      {"role": "user", "content": prompt}] if isinstance(prompt, str) else prompt)
         with trace_span(f"Pipeline / LLM / {self.provider}", inputs={"messages": messages}, run_type="llm",
-                        metadata={"ls_provider": self.provider, "ls_model_name": self.model}) as span:
+                        metadata={"ls_provider": self.provider, "ls_model_name": self.model, "thinking": self.thinking}) as span:
             before = len(self.usage)
             try:
                 result = self._json_call(messages, schema)
             finally:
                 if span and len(self.usage) > before:
-                    usage = self.usage[-1]
-                    recorded = {"input_tokens": usage.get("prompt_tokens"),
-                                "output_tokens": usage.get("output_tokens"),
-                                "total_tokens": usage.get("total_tokens")}
-                    span.end(outputs={"usage_metadata": recorded}, metadata={"usage_metadata": recorded})
-            if span:
-                span.end(outputs=result)
+                    recorded = model_usage(self.usage[before:], provider=self.provider, model=self.model)
+                    span.set(usage_metadata=recorded)
+                    span.end(outputs={"result": result if 'result' in locals() else None,
+                                      "usage_metadata": recorded})
             return result
 
     def _json_call(self, messages: list[dict[str, str]], schema: dict[str, Any]) -> dict[str, Any]:
@@ -107,7 +107,7 @@ class GroqREST:
         if self.provider == "groq":
             body.update(reasoning_effort="low", max_completion_tokens=self.max_tokens)
         else:
-            body.update(max_tokens=self.max_tokens, thinking={"type": "disabled"})
+            body.update(max_tokens=self.max_tokens, thinking={"type": self.thinking})
         headers = {"Authorization": f"Bearer {self.api_key}"}
         prompt_chars = sum(len(message["content"]) for message in messages)
         started = time.monotonic()
@@ -161,7 +161,8 @@ class GroqREST:
                            "prompt_tokens": metadata.get("prompt_tokens"),
                            "output_tokens": metadata.get("completion_tokens"),
                            "reasoning_tokens": details.get("reasoning_tokens"),
-                           "cached_tokens": prompt_details.get("cached_tokens"),
+                           "cached_tokens": metadata.get("prompt_cache_hit_tokens") or prompt_details.get("cached_tokens"),
+                           "thinking": self.thinking,
                            "total_tokens": metadata.get("total_tokens")})
         try:
             choice = payload["choices"][0]
@@ -212,7 +213,8 @@ def configured_provider(*, post=httpx.post):
     return GroqREST(api_key=os.getenv("TOKENHARBOR_API_KEY", ""),
                     model=os.getenv("TOKENHARBOR_MODEL", "deepseek-v4.1-flash:free"),
                     provider=provider, base_url=os.getenv("TOKENHARBOR_BASE_URL", "https://tokenharbor.ai/v1"),
-                    max_tokens=6000, timeout=90, post=transport)
+                    max_tokens=6000, timeout=90, post=transport,
+                    thinking=os.getenv("RAG_THINKING", "disabled"))
 
 
 ANSWER_SCHEMA = {"type": "OBJECT", "properties": {"answer": {"type": "STRING"},
