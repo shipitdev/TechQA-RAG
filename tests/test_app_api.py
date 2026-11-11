@@ -123,7 +123,7 @@ def test_depleted_credits_show_billing_error_without_answer(isolated_root):
             raise api.GenerationError('provider billing details',category='http_402')
     client=TestClient(api.create_app(Search(),DepletedWriter()))
     response=client.post('/ask',json={'question':'How do I restart?'})
-    assert 'Groq billing or credits need attention' in response.text
+    assert 'Model provider credits need attention' in response.text
     assert 'event: final' not in response.text
     assert 'provider billing details' not in response.text
 

@@ -55,11 +55,14 @@ def _groq_schema(schema: dict[str, Any]) -> dict[str, Any]:
 
 class GroqREST:
     def __init__(self, api_key: str | None = None, *, model: str = MODEL,
-                 timeout: float = 75, post: Callable[..., Any] = httpx.post):
+                 timeout: float = 75, post: Callable[..., Any] = httpx.post,
+                 provider: str = "groq", base_url: str = "https://api.groq.com/openai/v1",
+                 max_tokens: int = 1500):
         self.api_key = api_key if api_key is not None else os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY")
         if not self.api_key:
-            raise GenerationError("Groq API key is not configured")
-        self.model, self.timeout, self.post = model, min(timeout, 75), post
+            raise GenerationError("Model provider API key is not configured")
+        self.provider, self.base_url, self.max_tokens = provider, base_url.rstrip("/"), max_tokens
+        self.model, self.timeout, self.post = model, min(timeout, 120 if provider == "tokenharbor" else 75), post
         self.usage: list[dict[str, Any]] = []
         self.attempts: list[dict[str, Any]] = []
         self._remaining_tokens, self._quota_ready_at = float("inf"), 0.0
@@ -79,24 +82,32 @@ class GroqREST:
     def json_call(self, prompt: ChatPrompt, schema: dict[str, Any]) -> dict[str, Any]:
         messages = ([{"role": "system", "content": SYSTEM_RULES},
                      {"role": "user", "content": prompt}] if isinstance(prompt, str) else prompt)
-        with trace_span("Groq structured completion", inputs={"messages": messages}, run_type="llm",
-                        metadata={"ls_provider": "groq", "ls_model_name": self.model}) as span:
-            result = self._json_call(messages, schema)
+        with trace_span(f"Pipeline / LLM / {self.provider}", inputs={"messages": messages}, run_type="llm",
+                        metadata={"ls_provider": self.provider, "ls_model_name": self.model}) as span:
+            before = len(self.usage)
+            try:
+                result = self._json_call(messages, schema)
+            finally:
+                if span and len(self.usage) > before:
+                    usage = self.usage[-1]
+                    recorded = {"input_tokens": usage.get("prompt_tokens"),
+                                "output_tokens": usage.get("output_tokens"),
+                                "total_tokens": usage.get("total_tokens")}
+                    span.end(outputs={"usage_metadata": recorded}, metadata={"usage_metadata": recorded})
             if span:
-                usage = self.usage[-1]
-                span.end(outputs=result, metadata={"usage_metadata": {
-                    "input_tokens": usage.get("prompt_tokens"),
-                    "output_tokens": usage.get("output_tokens"),
-                    "total_tokens": usage.get("total_tokens"),
-                }})
+                span.end(outputs=result)
             return result
 
     def _json_call(self, messages: list[dict[str, str]], schema: dict[str, Any]) -> dict[str, Any]:
-        url = "https://api.groq.com/openai/v1/chat/completions"
+        url = self.base_url + "/chat/completions"
         body = {"model": self.model, "messages": messages,
-                "reasoning_effort": "low", "max_completion_tokens": 1500, "stream": False,
+                "stream": False,
                 "response_format": {"type": "json_schema", "json_schema": {
                     "name": "rag_response", "strict": True, "schema": _groq_schema(schema)}}}
+        if self.provider == "groq":
+            body.update(reasoning_effort="low", max_completion_tokens=self.max_tokens)
+        else:
+            body.update(max_tokens=self.max_tokens, thinking={"type": "disabled"})
         headers = {"Authorization": f"Bearer {self.api_key}"}
         prompt_chars = sum(len(message["content"]) for message in messages)
         started = time.monotonic()
@@ -111,7 +122,7 @@ class GroqREST:
                 time.sleep(wait)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                raise GenerationError("Groq request deadline exceeded", category="request_deadline") from None
+                raise GenerationError("Model provider request deadline exceeded", category="request_deadline") from None
             try:
                 response = self.post(url, headers=headers, json=body, timeout=remaining)
                 self.attempts.append({"status": response.status_code})
@@ -133,41 +144,75 @@ class GroqREST:
                 if retry and delay < deadline - time.monotonic():
                     time.sleep(delay)
                     continue
-                raise GenerationError(f"Groq HTTP {status}", category=f"http_{status}") from None
+                raise GenerationError(f"Model provider HTTP {status}", category=f"http_{status}") from None
             except httpx.TransportError as exc:
                 self.attempts.append({"status": None, "error_type": type(exc).__name__})
-                raise GenerationError("Groq transport " + type(exc).__name__, category="transport_" + type(exc).__name__) from None
+                raise GenerationError("Model provider transport " + type(exc).__name__, category="transport_" + type(exc).__name__) from None
             except (ValueError, TypeError) as exc:
-                raise GenerationError("Groq returned an invalid HTTP response", category="invalid_response") from None
-        try:
-            choice = payload["choices"][0]
-            message = choice["message"]
-            if choice.get("finish_reason") == "length":
-                raise GenerationError("Groq response exceeded the output limit", category="output_truncated")
-            if choice.get("finish_reason") not in {"stop", None}:
-                raise GenerationError("Groq returned an incomplete response", category="incomplete_response")
-            if message.get("refusal"):
-                raise GenerationError("Groq declined the request", category="refusal")
-            text = message.get("content")
-            if not isinstance(text, str) or not text.strip():
-                raise GenerationError("Groq returned an empty structured response", category="invalid_response")
-            result = json.loads(text)
-        except GenerationError:
-            raise
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise GenerationError("Groq returned an invalid structured response", category="invalid_response") from None
-        if not isinstance(result, dict):
-            raise GenerationError("Groq returned an invalid structured response", category="invalid_response")
-        metadata = payload.get("usage", {})
+                raise GenerationError("Model provider returned an invalid HTTP response", category="invalid_response") from None
+        if not isinstance(payload, dict):
+            raise GenerationError("Model provider returned an invalid response", category="invalid_response")
+        metadata = payload.get("usage") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
         details = metadata.get("completion_tokens_details") or {}
         prompt_details = metadata.get("prompt_tokens_details") or {}
-        self.usage.append({"provider": "groq", "model": self.model, "latency_seconds": time.monotonic() - started,
+        self.usage.append({"provider": self.provider, "model": self.model, "latency_seconds": time.monotonic() - started,
                            "prompt_tokens": metadata.get("prompt_tokens"),
                            "output_tokens": metadata.get("completion_tokens"),
                            "reasoning_tokens": details.get("reasoning_tokens"),
                            "cached_tokens": prompt_details.get("cached_tokens"),
                            "total_tokens": metadata.get("total_tokens")})
+        try:
+            choice = payload["choices"][0]
+            message = choice["message"]
+            if choice.get("finish_reason") == "length":
+                raise GenerationError("Model provider response exceeded the output limit", category="output_truncated")
+            if choice.get("finish_reason") not in {"stop", None}:
+                raise GenerationError("Model provider returned an incomplete response", category="incomplete_response")
+            if message.get("refusal"):
+                raise GenerationError("Model provider declined the request", category="refusal")
+            text = message.get("content")
+            if not isinstance(text, str) or not text.strip():
+                raise GenerationError("Model provider returned an empty structured response", category="invalid_response")
+            result = json.loads(text)
+        except GenerationError:
+            raise
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise GenerationError("Model provider returned an invalid structured response", category="invalid_response") from None
+        if not isinstance(result, dict):
+            raise GenerationError("Model provider returned an invalid structured response", category="invalid_response")
         return result
+
+
+def configured_provider(*, post=httpx.post):
+    """Use the provider selected in server settings."""
+    provider = os.getenv("RAG_LLM_PROVIDER", "groq")
+    if provider == "groq":
+        return GroqREST(post=post)
+    if provider != "tokenharbor":
+        raise GenerationError("Unknown RAG_LLM_PROVIDER")
+    transport = post
+    if os.getenv("EVAL_BUDGET_FILE"):
+        from scripts.eval_budget import EvaluationBudget, BudgetLimitError
+        ledger = EvaluationBudget(os.environ["EVAL_BUDGET_FILE"])
+        def transport(url, **kwargs):
+            try:
+                ticket = ledger.begin(kwargs["json"])
+            except BudgetLimitError:
+                raise GenerationError("Evaluation budget reached", category="budget_exhausted") from None
+            response = post(url, **kwargs)
+            try:
+                data = response.json()
+                usage = data.get("usage", {}) if isinstance(data, dict) else {}
+            except ValueError:
+                usage = {}
+            ledger.finish(ticket, usage, response.status_code)
+            return response
+    return GroqREST(api_key=os.getenv("TOKENHARBOR_API_KEY", ""),
+                    model=os.getenv("TOKENHARBOR_MODEL", "deepseek-v4.1-flash:free"),
+                    provider=provider, base_url=os.getenv("TOKENHARBOR_BASE_URL", "https://tokenharbor.ai/v1"),
+                    max_tokens=6000, timeout=90, post=transport)
 
 
 ANSWER_SCHEMA = {"type": "OBJECT", "properties": {"answer": {"type": "STRING"},
@@ -210,7 +255,7 @@ class ConversationResolver:
         if (not isinstance(result.get("dependent"), bool) or
                 not isinstance(result.get("question"), str) or
                 not isinstance(result.get("needs_clarification"), bool)):
-            raise GenerationError("Groq returned an invalid follow-up resolution")
+            raise GenerationError("Model provider returned an invalid follow-up resolution")
         if not result["dependent"]:
             return {"dependent": False, "question": question, "needs_clarification": False}
         if result["needs_clarification"] or not result["question"].strip():
@@ -228,7 +273,7 @@ def history_summarizer(json_call: Callable[[ChatPrompt, dict[str, Any]], dict[st
             "instead of merging them. Do not invent facts; this summary is context, never evidence.",
             {"previous_summary": previous, "older_exchanges": history}), SUMMARY_SCHEMA)
         if not isinstance(result.get("summary"), str):
-            raise GenerationError("Groq returned an invalid history summary")
+            raise GenerationError("Model provider returned an invalid history summary")
         return result["summary"]
     return summarize
 
@@ -248,7 +293,7 @@ class AnswerGenerator:
         if getattr(self, "on_progress", None):
             self.on_progress(stage)
         try:
-            with trace_span(stage, inputs={"messages": prompt}, metadata={"stage": stage}) as span:
+            with trace_span(f"Pipeline / {stage.title()}", inputs={"messages": prompt}, metadata={"stage": stage}) as span:
                 result = self.json_call(prompt, schema)
                 if span:
                     span.end(outputs=result)
@@ -284,7 +329,7 @@ class AnswerGenerator:
                 (result.get("status") == "answered" and not result["answer"].strip()) or
                 not isinstance(result.get("citations"), list) or
                 not all(isinstance(c, str) for c in result["citations"])):
-            raise GenerationError("Groq returned an invalid answer shape", category="invalid_answer_shape")
+            raise GenerationError("Model provider returned an invalid answer shape", category="invalid_answer_shape")
         return result
 
     @staticmethod
@@ -331,7 +376,7 @@ class AnswerGenerator:
                 not isinstance(result.get("findings"), list) or
                 not isinstance(result.get("unsupported_claims"), list) or
                 not all(isinstance(x, str) for key in ("missing_steps", "version_conflicts", "findings", "unsupported_claims") for x in result[key])):
-            raise GenerationError("Groq returned an invalid verification shape", category="invalid_verification_shape")
+            raise GenerationError("Model provider returned an invalid verification shape", category="invalid_verification_shape")
         if result["unsupported_claims"]:
             result.update(verdict="evidence_gap", supported=False, complete=False)
         return result

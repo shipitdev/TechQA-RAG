@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from rag_app.state import SessionStore, AnswerCache
 from rag_app.observability import persist_run
 from rag_app.tracing import trace_span
-from rag_app.generation import MODEL, PROMPT_VERSION, GroqREST, AnswerGenerator, GenerationError
+from rag_app.generation import MODEL, PROMPT_VERSION, configured_provider, AnswerGenerator, GenerationError
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / '.env')
@@ -35,7 +35,7 @@ class Feedback(BaseModel):
     comment: str = Field(default='', max_length=2000)
 
 
-def create_app(retriever=None, generator=None, resolver=None):
+def create_app(retriever=None, generator=None, resolver=None, provider=None):
     app = FastAPI(title='TechQA evidence workspace')
     serial = threading.Lock()
     admission = threading.BoundedSemaphore(5)
@@ -45,7 +45,7 @@ def create_app(retriever=None, generator=None, resolver=None):
     limits = defaultdict(deque)
     limiter_lock = threading.Lock()
     feedback_lock = threading.Lock()
-    runtime = {'retriever': retriever, 'generator': generator, 'resolver': resolver}
+    runtime = {'retriever': retriever, 'generator': generator, 'resolver': resolver, 'provider': provider}
 
     def pipeline_version():
         """Invalidate exact answers when data, runtime code, or UI library changes."""
@@ -79,7 +79,7 @@ def create_app(retriever=None, generator=None, resolver=None):
             from rag_app.retriever import Retriever
             runtime['retriever'] = Retriever()
         if runtime['generator'] is None:
-            provider = GroqREST()
+            provider = configured_provider()
             runtime['provider'] = provider
             runtime['generator'] = AnswerGenerator(provider.json_call)
             from rag_app.generation import ConversationResolver, history_summarizer
@@ -97,9 +97,11 @@ def create_app(retriever=None, generator=None, resolver=None):
     @app.get('/health/ready')
     def ready():
         if retriever is not None:
-            return {'status': 'ready', 'presentation': 'direct_groq'}
-        if not (os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')):
-            raise HTTPException(503, 'Groq API key is not configured')
+            return {'status': 'ready', 'presentation': 'direct_' + os.getenv('RAG_LLM_PROVIDER', 'groq')}
+        try:
+            configured_provider()
+        except GenerationError:
+            raise HTTPException(503, 'Model provider is not configured') from None
         try:
             from rag_app.retriever import Retriever
             check = Retriever()
@@ -110,7 +112,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                 check.close()
         except Exception:
             raise HTTPException(503, 'Qdrant/source import is not ready') from None
-        return {'status': 'ready', 'presentation': 'direct_groq', 'models': 'lazy-loaded on first request', 'index': identity, 'tracing': bool(os.getenv('LANGSMITH_API_KEY')) and os.getenv('LANGSMITH_TRACING', 'true').lower() == 'true'}
+        return {'status': 'ready', 'presentation': 'direct_' + os.getenv('RAG_LLM_PROVIDER', 'groq'), 'models': 'lazy-loaded on first request', 'index': identity, 'tracing': bool(os.getenv('LANGSMITH_API_KEY')) and os.getenv('LANGSMITH_TRACING', 'true').lower() == 'true'}
 
     @app.post('/session/end')
     def end(request: Request):
@@ -223,8 +225,9 @@ def create_app(retriever=None, generator=None, resolver=None):
                                         if dependent else None),
                             'pipeline': pipeline_version(),
                             'index': retrieve.index_identity() if hasattr(retrieve, 'index_identity') else 'injected_test_index',
-                            'model': MODEL,
-                            'prompt': PROMPT_VERSION, 'generation': {'provider': 'groq', 'reasoning_effort': 'low', 'max_output_tokens': 1500}}
+                            'model': provider.model if provider else MODEL,
+                            'prompt': PROMPT_VERSION, 'generation': {'provider': provider.provider if provider else 'injected',
+                            'max_output_tokens': provider.max_tokens if provider else 1500}}
                 cached = None if regen or result else answers.get(session.id, identity, session_expires_at=session.expires_at)
                 if cached:
                     result = dict(cached)
@@ -266,7 +269,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                             'answer_cache_hit': False, 'regenerated': regen,
                         },
                     }
-                    if result['status'] == 'answered' and (os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')) and os.getenv('ENABLE_GENUI', '1') == '1' and runtime.get('provider'):
+                    if result['status'] == 'answered' and os.getenv('ENABLE_GENUI', '1') == '1' and runtime.get('provider'):
                         if stopped(): return
                         emit('stage', {'stage': 'validating_presentation'})
                         from rag_app.presentation import generate_presentation
@@ -278,7 +281,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                     answers.put(session.id, identity, result, session_expires_at=session.expires_at)
                 result['request_id'] = rid
                 result.setdefault('metrics', {})['total_ms'] = round((time.monotonic() - started) * 1000, 2)
-                result['presentation_status'] = 'direct_groq' if result.get('openui') else 'verified_text_fallback'
+                result['presentation_status'] = ('direct_' + os.getenv('RAG_LLM_PROVIDER', 'groq')) if result.get('openui') else 'verified_text_fallback'
                 provider = runtime.get('provider')
                 if provider:
                     provider_calls = list(provider.usage)
@@ -297,18 +300,18 @@ def create_app(retriever=None, generator=None, resolver=None):
                 feedback_runs.put(session.id, rid, {
                     'question': body.question, 'resolved_question': question, 'result': result,
                     'pipeline_version': identity['pipeline'], 'prompt_version': PROMPT_VERSION,
-                    'model': MODEL, 'index': identity['index'], 'private_trace': private_trace,
+                    'model': identity['model'], 'index': identity['index'], 'private_trace': private_trace,
                 }, session_expires_at=session.expires_at)
                 emit('final', result)
                 write_metrics({'request_id': rid, 'status': result['status'], 'metrics': result['metrics']},private_trace)
                 completed = True
             except Exception as exc:
                 provider_messages = {
-                    'http_402': 'Groq billing or credits need attention. Check the Groq Console before retrying.',
-                    'http_429': 'Groq quota was reached. Retry after your provider quota resets.',
-                    'quota_deadline': 'Groq quota will not reset within this request. Try again after it resets.',
-                    'transport_TimeoutError': 'Groq did not respond before the time limit. No answer was released.',
-                    'transport_ReadTimeout': 'Groq did not respond before the time limit. No answer was released.',
+                    'http_402': 'Model provider credits need attention. Check your provider account before retrying.',
+                    'http_429': 'Model provider quota was reached. Retry after your provider quota resets.',
+                    'quota_deadline': 'Model provider quota will not reset within this request. Try again after it resets.',
+                    'transport_TimeoutError': 'The model provider did not respond before the time limit. No answer was released.',
+                    'transport_ReadTimeout': 'The model provider did not respond before the time limit. No answer was released.',
                 }
                 if isinstance(exc, GenerationError):
                     message = provider_messages.get(exc.category, 'Answer generation failed; please retry.')
@@ -353,7 +356,7 @@ def create_app(retriever=None, generator=None, resolver=None):
                 emit('done', {})
 
         def worker():
-            with trace_span('TechQA question', inputs={'question': body.question, 'regenerate': body.regenerate}, run_id=uuid.UUID(rid), metadata={'model': MODEL, 'prompt_version': PROMPT_VERSION, 'pipeline_sha256': pipeline_version()}) as run:
+            with trace_span('Pipeline / Question', inputs={'question': body.question, 'regenerate': body.regenerate}, run_id=uuid.UUID(rid), metadata={'model': os.getenv('TOKENHARBOR_MODEL', MODEL) if os.getenv('RAG_LLM_PROVIDER') == 'tokenharbor' else MODEL, 'prompt_version': PROMPT_VERSION, 'pipeline_sha256': pipeline_version()}) as run:
                 run_worker()
                 if run and not run.outputs:
                     run.end(outputs={'status': 'cancelled_or_timed_out'})

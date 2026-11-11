@@ -367,3 +367,44 @@ def test_missing_inline_citations_are_formatted_then_verified_in_two_calls():
     assert len(calls) == 2
     assert draft["answer"] == "Use X."
     assert json.loads(calls[1][1]["content"])["draft"] == result
+
+
+def test_tokenharbor_transport_preserves_schema_and_records_actual_provider(monkeypatch):
+    from rag_app.generation import configured_provider
+    monkeypatch.setenv("RAG_LLM_PROVIDER", "tokenharbor")
+    monkeypatch.setenv("TOKENHARBOR_API_KEY", "test")
+    monkeypatch.setenv("TOKENHARBOR_MODEL", "deepseek-v4.1-flash:free")
+    sent = []
+    def post(url, **kwargs):
+        sent.append((url, kwargs["json"]))
+        return httpx.Response(200, request=httpx.Request("POST", url), json={
+            "choices": [{"finish_reason": "stop", "message": {"content": '{"answer":"ok"}'}}],
+            "usage": {"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5}})
+    provider = configured_provider(post=post)
+    assert provider.json_call("Return JSON", {}) == {"answer": "ok"}
+    assert sent[0][0] == "https://tokenharbor.ai/v1/chat/completions"
+    assert sent[0][1]["max_tokens"] == 6000
+    assert "reasoning_effort" not in sent[0][1]
+    assert provider.usage[0]["provider"] == "tokenharbor"
+
+
+def test_truncated_response_keeps_usage_and_provider_neutral_error():
+    def post(url, **kwargs):
+        return httpx.Response(200, request=httpx.Request("POST", url), json={
+            "choices": [{"finish_reason": "length", "message": {"content": ""}}],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 3000, "total_tokens": 3010}})
+    provider = GroqREST("test", post=post, provider="tokenharbor")
+    with unittest.TestCase().assertRaises(GenerationError) as error:
+        provider.json_call("test", {})
+    assert error.exception.category == "output_truncated"
+    assert "Groq" not in str(error.exception)
+    assert provider.usage[-1]["total_tokens"] == 3010
+
+
+def test_malformed_provider_payload_is_a_categorized_error():
+    def post(url, **kwargs):
+        return httpx.Response(200, request=httpx.Request("POST", url), json=[])
+    provider = GroqREST("test", post=post)
+    with unittest.TestCase().assertRaises(GenerationError) as error:
+        provider.json_call("test", {})
+    assert error.exception.category == "invalid_response"
