@@ -87,6 +87,8 @@ def publish(directory, client, ragas=None, *, dataset_name=None, experiment_pref
              'comment': 'Citation format and source IDs.'},
             {'key': 'recorded_latency_seconds', 'score': seconds if measured else None},
             {'key': 'recorded_tokens', 'score': sum(c.get('total_tokens') or 0 for c in calls)},
+            {'key': 'reference_claim_coverage', 'score': row['reference_claim_coverage']['score'],
+             'comment': 'Custom reference-claim coverage from cached reverse NLI judgments, version 1.'},
             {'key': 'cost_status', 'value': 'free_route' if calls and all(str(c.get('model', '')).endswith(':free') for c in calls) else 'not_recorded'},
         ]
         for metric, value in row['ragas'].items():

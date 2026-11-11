@@ -78,3 +78,15 @@ def test_changed_embedding_identity_prevents_semantic_comparison_and_flagged_sco
 def test_case_loader_rejects_manifest_path_traversal(tmp_path):
     (tmp_path / 'manifest.json').write_text(json.dumps({'question_ids': ['../outside']}))
     with pytest.raises(ValueError): load_cases(tmp_path)
+
+
+def test_reference_claim_coverage_is_independent_of_bundled_response_claims():
+    from scripts.eval_suite import reference_claim_coverage
+    metric = {'state': 'success', 'score': 0, 'judge_calls': [
+        {'decision': {'claims': ['commands plus an extra condition']}},
+        {'decision': {'statements': [{'statement': 'commands plus an extra condition', 'verdict': 0}]}},
+        {'decision': {'claims': ['command one', 'command two']}},
+        {'decision': {'statements': [{'statement': 'command one', 'verdict': 1},
+                                     {'statement': 'command two', 'verdict': 1}]}}]}
+    assert reference_claim_coverage(metric)['score'] == 1.0
+    assert reference_claim_coverage({'state': 'error', 'judge_calls': []})['score'] is None

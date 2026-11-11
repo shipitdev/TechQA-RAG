@@ -117,7 +117,13 @@
           "budget_exhausted": 0
         }
       },
-      "citation_format": 1.0
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 0.8571428571428571,
+        "scored": 7,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
     },
     "component": {
       "cases": 2,
@@ -192,7 +198,13 @@
           "budget_exhausted": 0
         }
       },
-      "citation_format": 1.0
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 1.0,
+        "scored": 2,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
     },
     "workflow": {
       "cases": 2,
@@ -267,7 +279,13 @@
           "budget_exhausted": 0
         }
       },
-      "citation_format": 1.0
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 1.0,
+        "scored": 2,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
     },
     "v5": {
       "cases": 10,
@@ -376,7 +394,13 @@
           "budget_exhausted": 0
         }
       },
-      "citation_format": 1.0
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 0.74,
+        "scored": 5,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
     },
     "v6": {
       "cases": 10,
@@ -484,7 +508,13 @@
           "budget_exhausted": 0
         }
       },
-      "citation_format": 1.0
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 0.6357142857142857,
+        "scored": 7,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
     }
   },
   "paired_historical_v5_v6": {
@@ -547,6 +577,26 @@
     {
       "case": "TRAIN_Q353",
       "finding": "Historical answer adds commands for a different procedure; one verifier finding about missing citations is also mistaken."
+    },
+    {
+      "case": "TRAIN_Q252",
+      "finding": "Five faithfulness flags include framing, a user-attributed condition and clarification requests. Review claim selection before interpreting every flagged statement as hallucination."
+    },
+    {
+      "case": "TRAIN_Q425",
+      "finding": "Both reference commands are marked covered. RAGAS recall mode is zero after bundled response claims are rejected. Added reference-claim coverage diagnostic scores 2/2."
+    },
+    {
+      "case": "TRAIN_Q414",
+      "finding": "Support-withdrawal answer matches the reference; supplementary lifecycle link contributes extra reference precision requirements."
+    },
+    {
+      "case": "TRAIN_Q361",
+      "finding": "Answer differentiates distributed and z/OS support dates while the reference gives one platform row. Review platform scope."
+    },
+    {
+      "case": "TRAIN_Q488",
+      "finding": "Evidence establishes certified encryption modules but does not establish digital-signature applicability. Withholding is justified."
     }
   ],
   "limitations": [
@@ -556,7 +606,8 @@
     "Workflow semantic scores are per turn with conversation context, plus code checks for cache/session behavior. Canonical text only.",
     "Imported wall-clock timestamps are anchored at import time using saved durations. Aggregate usage spans carry token counts without per-call timing.",
     "Source references remain unchanged. Supplied-evidence component cases are distinct from production retrieval.",
-    "Historical native clocks could not be patched after finalization. New measured imports preserve the original experiments."
+    "Historical native clocks could not be patched after finalization. New measured imports preserve the original experiments.",
+    "Custom reference-claim coverage reuses fallible cached judge decisions and is distinct from the legacy RAGAS recall-mode score."
   ],
   "provenance": {
     "scorer_sha256": "4024b7d7422acb2e166f5cf366476e29df778d6a0845425510fe4cc18f9ae00d",

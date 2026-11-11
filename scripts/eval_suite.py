@@ -49,6 +49,30 @@ def judge_version_flags(case, result):
     return list(flags.values())
 
 
+def reference_claim_coverage(metric):
+    """Aggregate cached reference-to-response NLI from the pinned factual metric."""
+    groups = []
+    claims = None
+    for call in metric.get('judge_calls', []):
+        decision = call.get('decision') or {}
+        if 'claims' in decision:
+            claims = decision['claims']
+        if 'statements' in decision and claims is not None:
+            statements = decision['statements']
+            if (statements and len(statements) == len(claims)
+                    and all(isinstance(s, dict) and s.get('verdict') in (0, 1) for s in statements)
+                    and [' '.join(s.get('statement', '').split()) for s in statements]
+                        == [' '.join(c.split()) for c in claims]):
+                groups.append(statements)
+            claims = None
+    if metric.get('state') != 'success' or len(groups) != 2:
+        return {'state': 'unavailable', 'score': None}
+    reference_verdicts = groups[-1]
+    return {'state': 'derived_from_cached_judge',
+            'score': sum(s['verdict'] for s in reference_verdicts) / len(reference_verdicts),
+            'reference_claims': len(reference_verdicts), 'contract': 'reference_claim_coverage_v1'}
+
+
 def build_report(cases, ragas=None):
     if not cases or len({c['question_id'] for c in cases}) != len(cases):
         raise ValueError('Expected nonempty unique cases')
@@ -89,7 +113,8 @@ def build_report(cases, ragas=None):
                              'reason': m.get('reason') or m.get('error_type')}
         rows.append({'question_id': c['question_id'], 'outcome': c['status'],
                      'selected_gold_document_hit': hit, 'selected_passage_count': len(c['sources']),
-                     'citation_contract': citation, 'ragas': metrics, 'judge_integrity_flags': flags})
+                     'citation_contract': citation, 'ragas': metrics, 'judge_integrity_flags': flags,
+                     'reference_claim_coverage': reference_claim_coverage(judged.get(c['question_id'], {}).get('metrics', {}).get('answer_completeness', {}))})
         gen = c.get('generation', {})
         elapsed = gen.get('seconds')
         if isinstance(elapsed, (int, float)) and math.isfinite(elapsed):
