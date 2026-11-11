@@ -5,7 +5,7 @@
 <rect width="1120" height="1280" rx="18" fill="#f8fafc"/>
 <g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif" fill="#172b3a">
 <text x="36" y="40" font-size="13" font-weight="700" fill="#476479">TECHQA RAG / EVALUATION SUITE</text>
-<text x="36" y="83" font-size="36" font-weight="700" fill="#102d3b">Measure each handoff.</text>
+<text x="36" y="83" font-size="36" font-weight="700" fill="#102d3b">TechQA evaluation coverage</text>
 <text x="36" y="116" font-size="18" font-weight="400" fill="#334e60">RAGAS for semantic judgments. Python for contracts, operations and comparisons.</text>
 <rect x="36" y="133" width="80" height="26" rx="14" fill="#d6eee5" stroke="#d6eee5"/>
 <text x="48" y="151" font-size="12" font-weight="700" fill="#185646">SHIPPED</text>
@@ -21,8 +21,8 @@
 <text x="78" y="320" font-size="17" font-weight="400" fill="#334e60">Labeled rankings · programmatic checks</text>
 <rect x="570" y="233" width="492" height="113" rx="14" fill="#f8fcfa" stroke="#c3ddd1"/>
 <text x="590" y="263" font-size="20" font-weight="700" fill="#334e60">Generator with supplied evidence</text>
-<text x="590" y="292" font-size="18" font-weight="400" fill="#334e60">Writer / verifier / repair fixtures</text>
-<text x="590" y="320" font-size="17" font-weight="400" fill="#334e60">Controlled contracts; quality benchmark pending</text>
+<text x="590" y="292" font-size="18" font-weight="400" fill="#334e60">Writer / verifier / citation checks</text>
+<text x="590" y="320" font-size="17" font-weight="400" fill="#334e60">RAGAS · 2 supplied-evidence cases</text>
 <path d="M560 373 V396" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="36" y="406" width="1048" height="155" rx="14" fill="#efedfc" stroke="#cdc8ef"/>
 <text x="58" y="440" font-size="22" font-weight="700" fill="#334e60">02  Pipeline — evaluate the real retrieved context</text>
@@ -33,7 +33,7 @@
 <text x="58" y="537" font-size="17" font-weight="500" fill="#514a83">Selected metrics · case limits · request caps · cached marking decisions</text>
 <path d="M560 565 V589" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="36" y="598" width="1048" height="212" rx="14" fill="#eaf2fb" stroke="#c0d3e9"/>
-<text x="58" y="632" font-size="22" font-weight="700" fill="#334e60">03  Application — answer quality, contracts and operating cost</text>
+<text x="58" y="632" font-size="22" font-weight="700" fill="#334e60">03  Workflow — API turns, quality and operations</text>
 <rect x="58" y="650" width="322" height="137" rx="14" fill="#f8fbff" stroke="#cfdeec"/>
 <rect x="399" y="650" width="322" height="137" rx="14" fill="#f8fbff" stroke="#cfdeec"/>
 <rect x="740" y="650" width="322" height="137" rx="14" fill="#f8fbff" stroke="#cfdeec"/>
@@ -41,16 +41,16 @@
 <rect x="177" y="661" width="72" height="26" rx="14" fill="#faedc9" stroke="#faedc9"/>
 <text x="189" y="679" font-size="12" font-weight="700" fill="#785514">OPT-IN</text>
 <text x="76" y="711" font-size="17" font-weight="400" fill="#334e60">Factual correctness (F1)</text>
-<text x="76" y="737" font-size="17" font-weight="400" fill="#334e60">Completeness (recall mode)</text>
-<text x="76" y="764" font-size="16" font-weight="400" fill="#637789">Style / broad safety: planned</text>
+<text x="76" y="737" font-size="17" font-weight="400" fill="#334e60">Reference-fact recall</text>
+<text x="76" y="764" font-size="16" font-weight="400" fill="#637789">Style and broad safety planned</text>
 <text x="417" y="680" font-size="20" font-weight="700" fill="#334e60">Contracts</text>
-<text x="417" y="711" font-size="17" font-weight="400" fill="#334e60">Citations · withholding · layouts</text>
-<text x="417" y="737" font-size="17" font-weight="400" fill="#334e60">Judge version-preservation flags</text>
+<text x="417" y="711" font-size="17" font-weight="400" fill="#334e60">Follow-ups · cache · citations</text>
+<text x="417" y="737" font-size="17" font-weight="400" fill="#334e60">Sessions · layouts · withholding</text>
 <text x="417" y="764" font-size="16" font-weight="400" fill="#334e60">Human review for flagged scores</text>
 <text x="758" y="680" font-size="20" font-weight="700" fill="#334e60">Operations</text>
 <text x="758" y="711" font-size="17" font-weight="400" fill="#334e60">Time · tokens · cache use</text>
 <text x="758" y="737" font-size="17" font-weight="400" fill="#334e60">HTTP attempts and quota errors</text>
-<text x="758" y="764" font-size="16" font-weight="400" fill="#637789">Dollar pricing not configured</text>
+<text x="758" y="764" font-size="16" font-weight="400" fill="#637789">Shared token-value budget guard</text>
 <path d="M560 814 V837" fill="none" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="36" y="847" width="1048" height="105" rx="14" fill="#fbf4e5" stroke="#e2d3b1"/>
 <text x="58" y="880" font-size="22" font-weight="700" fill="#334e60">Regression is a comparison, not another metric</text>
