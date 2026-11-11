@@ -144,3 +144,8 @@
 !/evaluations/results/techqa_wide_v5.json
 
 !/evaluations/results/generation_v6.json
+
+!/scripts/eval_budget.py
+!/scripts/eval_layers.py
+
+!/evaluations/results/layered_audit_10.json

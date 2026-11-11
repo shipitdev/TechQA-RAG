@@ -62,15 +62,57 @@ Approval and review notes are required for feedback-based RAGAS evaluation. Use 
 
 ![Evaluation layers: components, pipeline, application, regression and planned monitoring](evaluations/overview.svg)
 
-**Evaluate the parts, then their handoff, then the delivered answer.** RAGAS supplies semantic metrics; our Python checks cover source/citation contracts, recorded usage, judge integrity and paired regressions. Unit tests exercise failure handling with controlled fixtures. No single score is called “RAG accuracy.”
+The suite records retrieval quality, generated-answer quality and API workflow behavior. RAGAS supplies semantic judgments. Python checks source/citation contracts, session/cache behavior, recorded usage and paired regressions.
 
-| Layer | What we check | Implementation and status |
+| Layer | What we check | Implemented measurements |
 |---|---|---|
-| Components | Retrieval Recall@K, MRR and nDCG against known article labels; writer/verifier behavior with supplied evidence | [Rank metrics](scripts/baseline.py), [retrieval tests](tests/test_app_retriever.py), [generator contract fixtures](tests/test_app_generation.py). Controlled fixtures are not a generator quality benchmark. |
-| Pipeline | Selected context precision/recall, answer faithfulness and relevancy | [RAGAS runner](scripts/eval_ragas.py), measured on the pilot below. Reference text stays outside inference. |
-| Application | Reference-based correctness and completeness; citation validity; withholding and layout contracts; recorded timing/tokens/cache use | Correctness = RAGAS `FactualCorrectness(mode="f1")`; completeness = its `mode="recall"` proxy. Both are opt-in and have sampled results below. [Free saved-case checks](scripts/eval_suite.py), [API contracts](tests/test_app_api.py), [layout checks](frontend/tests/genui-contract.test.mjs) are implemented. |
-| Regression | Re-run a fixed case set, then inspect per-case differences | [Comparison CLI](scripts/eval_suite.py) rejects changed cohorts/references. Semantic comparisons also require matching judge settings and exclude scores flagged for review. |
-| Online | User feedback, reviewed regression cases, sampled judging and drift | Helpful/unhelpful votes and optional comments save the run for review and sync to LangSmith. Reviewed references can be exported for RAGAS. Sampled live judging and drift monitoring remain planned. |
+| Component | Retriever ranking and generator with supplied original article evidence | Recall@K, MRR and nDCG in the retrieval benchmark. Two supplied-evidence generator cases scored with RAGAS faithfulness, relevancy and reference metrics. |
+| Pipeline | Actual retrieved context through writing and verification | Ten fixed training questions. All six metric types scored for eligible cases, with explicit skipped/error states and denominators. |
+| Workflow | API conversation turns, follow-up resolution and exact answer caching | Two real API turns scored with RAGAS. Same-session follow-up and repeated-question cache checks also run. [Layer collector](scripts/eval_layers.py). |
+| Regression | Matched cases and references | [Comparison CLI](scripts/eval_suite.py) checks cohort and judge identity. The saved v5/v6 outputs were rescored with the same DeepSeek judge. |
+| Online | Feedback and run inspection | LangSmith traces, user ratings and reviewed regression exports. Live sampled judging and drift monitoring are planned. |
+
+### Ten-question evaluation audit
+
+The [redacted audit](evaluations/results/layered_audit_10.json) uses the first ten IDs from the fixed training sample. Today's writer, verifier and judge use TokenHarbor `deepseek-v4.1-flash:free`. Historical v5/v6 outputs retain their original Groq model attribution. The judge passed supported/unsupported faithfulness sanity checks at 1.0/0.0.
+
+| Metric | DeepSeek pipeline mean | Scored / eligible |
+|---|---:|---:|
+| Context recall | 100.0% | 10/10 |
+| Context precision | 83.9% | 10/10 |
+| Faithfulness | 96.6% | 7/7 |
+| Answer relevancy | 88.5% | 7/7 |
+| Reference factual correctness | 40.9% | 7/7 |
+| Reference-fact recall | 78.6% | 7/7 |
+
+The pipeline released seven answers, withheld two and requested clarification once. It had zero generation errors after the DeepSeek adapter correction. Supplied-evidence component faithfulness was 100% over two cases. Workflow faithfulness was 100% and answer relevancy 94.2% over two turns. Repeated-question caching passed. These small training diagnostics require human review before a release decision.
+
+On the four shared released historical cases, the same DeepSeek judge scored reference correctness **50.0% → 37.8%** from v5 to v6. Q117's broader version assertions contribute to the drop. Q548 also exposes bundled-claim and overly literal error-string judgments. Q376 mentions details and asks where to find them; its reference expects a vulnerability explanation. A reviewed task rubric should resolve that scope difference. The new verifier also incorrectly rejects qualified version differences and demands unrequested remediation. These findings guide the next change.
+
+The legacy `answer_completeness` field uses RAGAS `FactualCorrectness(mode="recall")`. It measures reference agreement. Required-task completeness needs explicit review of the question and requested steps. A separate `reference_claim_coverage` diagnostic reuses cached reference-to-answer judgments. Q425 covers both reference commands even though the original recall-mode score is zero because it rejected bundled answer claims. Both values stay visible and require review. Claim decomposition and coverage settings affect reference scores. [RAGAS metric definitions](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/factual_correctness/)
+
+Each dashboard metric has `ragas_state_*`, `ragas_scored_*` and `ragas_eligible_*` feedback. Skipped answers and failed judgments have reasons. Historical imports include saved duration, model usage and original generation errors. Imported wall clocks anchor those durations at import time. Aggregate usage spans carry recorded token totals. [LangSmith usage instrumentation](https://docs.langchain.com/langsmith/log-llm-trace)
+
+The shared [budget guard](scripts/eval_budget.py) tracks cached inputs, failed preflights and unresolved reservations across generation and judging. The audit stayed at **$0.295/$0.50** of standard-route token value. The selected free route bills zero and consumes its free allowance. Trace names use `Pipeline / ...`, `Component / ...`, `Workflow / ...` and `RAGAS / ...`.
+
+Run the layer collector after collecting the ten pipeline cases. Use the RAGAS runner on each output directory.
+
+```bash
+python -m scripts.eval_layers \
+  --pipeline data/ragas/ten_questions \
+  --output data/ragas/layers \
+  --component-ids TRAIN_Q117 TRAIN_Q548 \
+  --workflow-root TRAIN_Q013 \
+  --followup "Which version must I upgrade it to first?"
+
+python -m scripts.eval_ragas run \
+  --provider tokenharbor --judge deepseek-v4.1-flash:free \
+  --cases data/ragas/layers/component --limit 2 --max-requests 40 \
+  --metrics faithfulness answer_relevancy factual_correctness answer_completeness
+```
+
+Set `EVAL_BUDGET_FILE` to a shared ledger path to enforce the $0.50 token-value budget across processes. Set `RAG_LLM_PROVIDER=tokenharbor` for DeepSeek generation. The serving environment and evaluation environment use their pinned requirements.
+
 
 Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Existing origin/session, withholding and generated-component checks cover specific application contracts; they are not a comprehensive safety benchmark. Optional semantic metrics compare against available references, which may omit valid alternative answers.
 

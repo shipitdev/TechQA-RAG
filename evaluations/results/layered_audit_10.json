@@ -1,0 +1,616 @@
+{
+  "scope": "Fixed ten-question training diagnostic sample plus supplied-evidence and real API workflow checks.",
+  "models": {
+    "today_pipeline": "deepseek-v4.1-flash:free",
+    "judge": "deepseek-v4.1-flash:free",
+    "historical_v5_v6_writer": "openai/gpt-oss-120b"
+  },
+  "judge_sanity_checks": {
+    "supported_faithfulness": 1.0,
+    "unsupported_faithfulness": 0.0
+  },
+  "layers": {
+    "pipeline": {
+      "cases": 10,
+      "outcomes": {
+        "answered": 7,
+        "insufficient_evidence": 2,
+        "needs_clarification": 1
+      },
+      "metrics": {
+        "context_recall": {
+          "success": 10,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 1.0,
+          "flagged_for_review": 0
+        },
+        "context_precision": {
+          "success": 10,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 0.8385714285112444,
+          "flagged_for_review": 0
+        },
+        "faithfulness": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.9659863945578231,
+          "flagged_for_review": 0
+        },
+        "answer_relevancy": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.8849442137920638,
+          "flagged_for_review": 0
+        },
+        "factual_correctness": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.40857142857142853,
+          "flagged_for_review": 0
+        },
+        "answer_completeness": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.7857142857142857,
+          "flagged_for_review": 0
+        }
+      },
+      "coverage": {
+        "context_recall": {
+          "scored": 10,
+          "eligible": 10,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "context_precision": {
+          "scored": 10,
+          "eligible": 10,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "faithfulness": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_relevancy": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "factual_correctness": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_completeness": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        }
+      },
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 0.8571428571428571,
+        "scored": 7,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
+    },
+    "component": {
+      "cases": 2,
+      "outcomes": {
+        "answered": 2
+      },
+      "metrics": {
+        "faithfulness": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 1.0,
+          "flagged_for_review": 0
+        },
+        "answer_relevancy": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 0.8169765529503135,
+          "flagged_for_review": 0
+        },
+        "factual_correctness": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 0.25,
+          "flagged_for_review": 0
+        },
+        "answer_completeness": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 1.0,
+          "flagged_for_review": 0
+        }
+      },
+      "coverage": {
+        "faithfulness": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_relevancy": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "factual_correctness": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_completeness": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        }
+      },
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 1.0,
+        "scored": 2,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
+    },
+    "workflow": {
+      "cases": 2,
+      "outcomes": {
+        "answered": 2
+      },
+      "metrics": {
+        "faithfulness": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 1.0,
+          "flagged_for_review": 0
+        },
+        "answer_relevancy": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 0.9418714459143624,
+          "flagged_for_review": 0
+        },
+        "factual_correctness": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 0.7350000000000001,
+          "flagged_for_review": 0
+        },
+        "answer_completeness": {
+          "success": 2,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 1.0,
+          "flagged_for_review": 0
+        }
+      },
+      "coverage": {
+        "faithfulness": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_relevancy": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "factual_correctness": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_completeness": {
+          "scored": 2,
+          "eligible": 2,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        }
+      },
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 1.0,
+        "scored": 2,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
+    },
+    "v5": {
+      "cases": 10,
+      "outcomes": {
+        "generation_error": 3,
+        "insufficient_evidence": 2,
+        "answered": 5
+      },
+      "metrics": {
+        "context_recall": {
+          "success": 10,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 1.0,
+          "flagged_for_review": 0
+        },
+        "context_precision": {
+          "success": 10,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 0.8385714285112444,
+          "flagged_for_review": 0
+        },
+        "faithfulness": {
+          "success": 5,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 5,
+          "budget_exhausted": 0,
+          "mean": 0.8777777777777779,
+          "flagged_for_review": 0
+        },
+        "answer_relevancy": {
+          "success": 5,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 5,
+          "budget_exhausted": 0,
+          "mean": 0.9281414053744047,
+          "flagged_for_review": 0
+        },
+        "factual_correctness": {
+          "success": 5,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 5,
+          "budget_exhausted": 0,
+          "mean": 0.48,
+          "flagged_for_review": 0
+        },
+        "answer_completeness": {
+          "success": 5,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 5,
+          "budget_exhausted": 0,
+          "mean": 0.6,
+          "flagged_for_review": 0
+        }
+      },
+      "coverage": {
+        "context_recall": {
+          "scored": 10,
+          "eligible": 10,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "context_precision": {
+          "scored": 10,
+          "eligible": 10,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "faithfulness": {
+          "scored": 5,
+          "eligible": 5,
+          "skipped": 5,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_relevancy": {
+          "scored": 5,
+          "eligible": 5,
+          "skipped": 5,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "factual_correctness": {
+          "scored": 5,
+          "eligible": 5,
+          "skipped": 5,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_completeness": {
+          "scored": 5,
+          "eligible": 5,
+          "skipped": 5,
+          "errors": 0,
+          "budget_exhausted": 0
+        }
+      },
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 0.74,
+        "scored": 5,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
+    },
+    "v6": {
+      "cases": 10,
+      "outcomes": {
+        "answered": 7,
+        "insufficient_evidence": 3
+      },
+      "metrics": {
+        "context_recall": {
+          "success": 10,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 1.0,
+          "flagged_for_review": 0
+        },
+        "context_precision": {
+          "success": 10,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 0,
+          "budget_exhausted": 0,
+          "mean": 0.8385714285112444,
+          "flagged_for_review": 0
+        },
+        "faithfulness": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.8898046398046399,
+          "flagged_for_review": 0
+        },
+        "answer_relevancy": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.8986788023844029,
+          "flagged_for_review": 0
+        },
+        "factual_correctness": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.4857142857142857,
+          "flagged_for_review": 0
+        },
+        "answer_completeness": {
+          "success": 7,
+          "error": 0,
+          "undefined": 0,
+          "skipped": 3,
+          "budget_exhausted": 0,
+          "mean": 0.6628571428571429,
+          "flagged_for_review": 0
+        }
+      },
+      "coverage": {
+        "context_recall": {
+          "scored": 10,
+          "eligible": 10,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "context_precision": {
+          "scored": 10,
+          "eligible": 10,
+          "skipped": 0,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "faithfulness": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_relevancy": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "factual_correctness": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        },
+        "answer_completeness": {
+          "scored": 7,
+          "eligible": 7,
+          "skipped": 3,
+          "errors": 0,
+          "budget_exhausted": 0
+        }
+      },
+      "citation_format": 1.0,
+      "reference_claim_coverage": {
+        "mean": 0.6357142857142857,
+        "scored": 7,
+        "contract": "reference_claim_coverage_v1",
+        "source": "custom aggregation of cached reverse NLI judgments"
+      }
+    }
+  },
+  "paired_historical_v5_v6": {
+    "faithfulness": {
+      "count": 4,
+      "v5": 0.875,
+      "v6": 0.8557692307692308
+    },
+    "answer_relevancy": {
+      "count": 4,
+      "v5": 0.9170897981710456,
+      "v6": 0.9419035384467649
+    },
+    "factual_correctness": {
+      "count": 4,
+      "v5": 0.5,
+      "v6": 0.3775
+    },
+    "answer_completeness": {
+      "count": 4,
+      "v5": 0.5,
+      "v6": 0.625
+    }
+  },
+  "workflow_contracts": {
+    "turns": 2,
+    "same_session": true,
+    "repeat_answer_cache_hit": true,
+    "followup_result": "answered"
+  },
+  "budget": {
+    "limit_usd": 0.5,
+    "tracked_standard_route_token_value_usd": 0.29459167199999997,
+    "reported_value_usd": 0.28468837199999997,
+    "unsettled_reservations": 1,
+    "http_attempts": 352,
+    "pricing_input_per_million": 0.3,
+    "pricing_output_per_million": 1.2,
+    "pricing_cache_read_per_million": 0.0015,
+    "route": "TokenHarbor free allowance",
+    "basis": "Conservative standard-route token value including preflight attempts and reservations; actual free-route billing is zero."
+  },
+  "failure_review": [
+    {
+      "case": "TRAIN_Q376",
+      "finding": "Question mentions details and asks where to find them. Link-only responses have zero reference coverage; task scope and reference alignment require review. Earlier automatic reference-only diagnosis was premature."
+    },
+    {
+      "case": "TRAIN_Q117",
+      "finding": "Historical answer extrapolates version scope. New verifier also treats an explicitly resolved scope difference as a version conflict."
+    },
+    {
+      "case": "TRAIN_Q548",
+      "finding": "Unrequested remediation, bundled claims and overly literal error-string judging. New verifier demands remediation beyond a cause question."
+    },
+    {
+      "case": "TRAIN_Q310",
+      "finding": "Historical withholding rejects an unsupported reboot step. New answer gives the documented cache timeout guidance."
+    },
+    {
+      "case": "TRAIN_Q353",
+      "finding": "Historical answer adds commands for a different procedure; one verifier finding about missing citations is also mistaken."
+    },
+    {
+      "case": "TRAIN_Q252",
+      "finding": "Five faithfulness flags include framing, a user-attributed condition and clarification requests. Review claim selection before interpreting every flagged statement as hallucination."
+    },
+    {
+      "case": "TRAIN_Q425",
+      "finding": "Both reference commands are marked covered. RAGAS recall mode is zero after bundled response claims are rejected. Added reference-claim coverage diagnostic scores 2/2."
+    },
+    {
+      "case": "TRAIN_Q414",
+      "finding": "Support-withdrawal answer matches the reference; supplementary lifecycle link contributes extra reference precision requirements."
+    },
+    {
+      "case": "TRAIN_Q361",
+      "finding": "Answer differentiates distributed and z/OS support dates while the reference gives one platform row. Review platform scope."
+    },
+    {
+      "case": "TRAIN_Q488",
+      "finding": "Evidence establishes certified encryption modules but does not establish digital-signature applicability. Withholding is justified."
+    }
+  ],
+  "limitations": [
+    "Training diagnostic sample, no held-out development evaluation.",
+    "Today writer and judge share the DeepSeek model; two sanity canaries do not establish human alignment.",
+    "RAGAS answer_completeness is reference-fact recall mode. Required-task completeness is a separate criterion.",
+    "Workflow semantic scores are per turn with conversation context, plus code checks for cache/session behavior. Canonical text only.",
+    "Imported wall-clock timestamps are anchored at import time using saved durations. Aggregate usage spans carry token counts without per-call timing.",
+    "Source references remain unchanged. Supplied-evidence component cases are distinct from production retrieval.",
+    "Historical native clocks could not be patched after finalization. New measured imports preserve the original experiments.",
+    "Custom reference-claim coverage reuses fallible cached judge decisions and is distinct from the legacy RAGAS recall-mode score."
+  ],
+  "provenance": {
+    "scorer_sha256": "4024b7d7422acb2e166f5cf366476e29df778d6a0845425510fe4cc18f9ae00d",
+    "pipeline_manifest_sha256": "4c69828bb542728f0915e4ead1a88319bc8b445ce9b5e05199c8782a7ba63883"
+  }
+}
