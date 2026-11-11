@@ -85,7 +85,8 @@ def build_report(cases, ragas=None):
             if m['state'] == 'success' and (not isinstance(value, (int, float)) or not math.isfinite(value)):
                 raise ValueError('Successful judge score must be finite')
             metrics[name] = {'state': m['state'], 'score': value,
-                             'needs_review': any(f['metric'] == name for f in flags)}
+                             'needs_review': any(f['metric'] == name for f in flags),
+                             'reason': m.get('reason') or m.get('error_type')}
         rows.append({'question_id': c['question_id'], 'outcome': c['status'],
                      'selected_gold_document_hit': hit, 'selected_passage_count': len(c['sources']),
                      'citation_contract': citation, 'ragas': metrics, 'judge_integrity_flags': flags})

@@ -211,3 +211,91 @@ def test_unreviewed_feedback_is_rejected_before_judging(tmp_path):
     (tmp_path / (qid + '.json')).write_text(json.dumps({'question_id': qid, 'review_status': 'pending', 'reference': 'Unreviewed claim'}))
     with pytest.raises(ValueError, match='approved references'):
         asyncio.run(run(SimpleNamespace(cases=tmp_path, limit=1)))
+
+
+def test_shared_dollar_budget_reserves_then_settles_and_reuses_cache_discount(tmp_path):
+    import json
+    from scripts.eval_budget import EvaluationBudget, BudgetLimitError
+    ledger = EvaluationBudget(tmp_path / "budget.json", limit=0.02)
+    body = {"messages": [{"role": "user", "content": "test"}], "max_tokens": 100}
+    ticket = ledger.begin(body)
+    ledger.finish(ticket, {"prompt_tokens": 100, "completion_tokens": 10,
+                          "prompt_tokens_details": {"cached_tokens": 90}}, 200)
+    data = json.loads((tmp_path / "budget.json").read_text())
+    assert data["requests"][ticket]["cached_input_tokens"] == 90
+    assert data["requests"][ticket]["value_usd"] < 0.00002
+    with pytest.raises(BudgetLimitError):
+        ledger.begin({"messages": [], "max_tokens": 100000})
+
+
+def test_workflow_stream_parser_keeps_generation_errors():
+    from scripts.eval_layers import stream_result
+    response = SimpleNamespace(text='event: error\ndata: {"metrics":{"error_category":"http_429"}}\n\n')
+    result = stream_result(response)
+    assert result["status"] == "generation_error"
+    assert result["metrics"]["error_category"] == "http_429"
+
+
+def test_public_workflow_collector_uses_api_memory_and_cache(tmp_path, monkeypatch):
+    import json
+    import rag_app.api as api
+    import scripts.eval_layers as layers
+    payload = json.loads(Path('evaluations/fixtures/offline_demo.json').read_text())['cases'][0]
+    pipeline = tmp_path / 'pipeline'
+    pipeline.mkdir()
+    (pipeline / 'manifest.json').write_text(json.dumps({'question_ids': [payload['question_id']]}))
+    (pipeline / (payload['question_id'] + '.json')).write_text(json.dumps(payload))
+    monkeypatch.setattr(api, 'ROOT', tmp_path)
+
+    class Search:
+        def index_identity(self): return 'controlled'
+        def retrieve(self, question): return {'sources': payload['sources'], 'metrics': {}}
+        def close(self): pass
+
+    def reply(prompt, schema):
+        if 'dependent' in schema['properties']:
+            data = json.loads(prompt[1]['content'])
+            dependent = data['original_question'] == 'What follows that edit?'
+            return {'dependent': dependent, 'question': 'Beacon restart?' if dependent else data['original_question'],
+                    'needs_clarification': False}
+        if 'verdict' in schema['properties']:
+            return {'verdict': 'complete', 'supported': True, 'complete': True,
+                    'missing_steps': [], 'version_conflicts': [], 'findings': [], 'unsupported_claims': []}
+        return {'status': 'answered', 'answer': 'Restart the connector. [S1]', 'citations': ['S1']}
+
+    provider = SimpleNamespace(json_call=reply, usage=[], attempts=[], model='controlled', provider='controlled', max_tokens=100)
+    monkeypatch.setattr(layers, 'configured_provider', lambda: provider)
+    monkeypatch.setattr(layers, 'Retriever', Search)
+    output = tmp_path / 'workflow'
+    layers.collect_workflow(pipeline, output, payload['question_id'], 'What follows that edit?')
+    checks = json.loads((output / 'contracts.json').read_text())
+    assert checks['repeat_answer_cache_hit'] and checks['session_cleared']
+    assert json.loads((output / (payload['question_id'] + '_FOLLOWUP.json')).read_text())['status'] == 'answered'
+
+
+def test_component_collector_supplies_gold_article_instead_of_search_context(tmp_path, monkeypatch):
+    import json
+    import scripts.eval_layers as layers
+    c = json.loads(Path('evaluations/fixtures/offline_demo.json').read_text())['cases'][0]
+    pipeline = tmp_path / 'pipeline'
+    pipeline.mkdir()
+    (pipeline / 'manifest.json').write_text(json.dumps({'question_ids': [c['question_id']]}))
+    (pipeline / (c['question_id'] + '.json')).write_text(json.dumps(c))
+    raw = tmp_path / 'raw'
+    folder = raw / 'TechQA/training_and_dev'
+    folder.mkdir(parents=True)
+    (folder / 'training_dev_technotes.json').write_text(json.dumps({'beacon': {'text': 'GOLD_ARTICLE'}}))
+    seen = []
+    class Generator:
+        trace = []
+        def __init__(self, callback): pass
+        def generate(self, question, sources):
+            seen.append(sources)
+            return {'status':'answered','answer':'Approved [S1]','citations':['S1']}
+    monkeypatch.setattr(layers, 'RAW', raw)
+    monkeypatch.setattr(layers, 'AnswerGenerator', Generator)
+    monkeypatch.setattr(layers, 'configured_provider', lambda: SimpleNamespace(usage=[], attempts=[], json_call=None))
+    output = tmp_path / 'component'
+    layers.collect_components(pipeline, output, [c['question_id']])
+    assert seen[0][0]['text'] == 'GOLD_ARTICLE'
+    assert json.loads((output / (c['question_id'] + '.json')).read_text())['evaluation_layer'] == 'component'

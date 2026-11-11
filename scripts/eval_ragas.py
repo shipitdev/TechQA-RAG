@@ -104,7 +104,15 @@ async def cached_judgment(generate, settings, prompt, response_model, directory,
                         'seconds': time.perf_counter() - started, 'http_calls': []})
         return result
     try:
-        result = await generate(prompt, response_model)
+        from rag_app.tracing import trace_span
+        with trace_span('RAGAS / Judge', inputs={'prompt': prompt}, run_type='llm',
+                        metadata={'ls_provider': settings.get('provider'), 'ls_model_name': settings.get('judge')} ) as span:
+            result = await generate(prompt, response_model)
+            if span:
+                calls = http_calls[offset:]
+                span.end(outputs={**result.model_dump(mode='json'), 'usage_metadata': {
+                    'input_tokens': sum((c.get('usage') or {}).get('prompt_tokens') or 0 for c in calls),
+                    'output_tokens': sum((c.get('usage') or {}).get('completion_tokens') or 0 for c in calls)}})
         save(path, {'output': result.model_dump(mode='json')})
         return result
     finally:
@@ -123,9 +131,14 @@ async def evaluate_case(case, scorers, *, timeout=300, journal=None, budget=None
             results[name] = {'state': 'skipped', 'score': None, 'reason': 'no_context_or_no_released_answer'}
             continue
         try:
-            async with asyncio.timeout(timeout):
-                result = await scorer.ascore(**metric_inputs(name, case))
-            value = float(result.value)
+            from rag_app.tracing import trace_span
+            with trace_span('RAGAS / ' + name, inputs={'question_id': case['question_id']},
+                            metadata={'layer': case.get('evaluation_layer', 'pipeline')}) as metric_run:
+                async with asyncio.timeout(timeout):
+                    result = await scorer.ascore(**metric_inputs(name, case))
+                value = float(result.value)
+                if metric_run:
+                    metric_run.end(outputs={'score': value if math.isfinite(value) else None})
             results[name] = {'state': 'success' if math.isfinite(value) else 'undefined',
                              'score': value if math.isfinite(value) else None}
         except Exception as exc:
@@ -154,7 +167,7 @@ def collect(args):
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env")
     from rag_app.retriever import Retriever
-    from rag_app.generation import AnswerGenerator, GroqREST, GenerationError
+    from rag_app.generation import AnswerGenerator, configured_provider, GenerationError
     split_path = ROOT / 'data/splits/techqa_v1.json'
     split = json.loads(split_path.read_text())
     base = RAW / 'TechQA/training_and_dev'
@@ -177,7 +190,7 @@ def collect(args):
     def bounded_post(*args, **kwargs):
         budget.consume()
         return httpx.post(*args, **kwargs)
-    provider = GroqREST(post=bounded_post)
+    provider = configured_provider(post=bounded_post)
     generator = AnswerGenerator(provider.json_call)
     identity = {'split_sha256': sha256(split_path), 'source_hashes': split['source_hashes'],
                 'index': retriever.index_identity(), 'model': provider.model,
@@ -207,7 +220,7 @@ def collect(args):
             generator.trace.clear()
             question = q['QUESTION_TITLE'] + '\n' + q['QUESTION_TEXT']
             print(q['QUESTION_ID'] + ': retrieval → writer → verifier', flush=True)
-            with trace_span('TechQA evaluation', inputs={'question': question}, metadata={'question_id': q['QUESTION_ID'], 'evaluation': True, 'split': 'training_tuning', 'model': provider.model, 'index': identity['index']}) as run:
+            with trace_span('Pipeline / Evaluation / ' + q['QUESTION_ID'], inputs={'question': question}, metadata={'question_id': q['QUESTION_ID'], 'evaluation': True, 'split': 'training_tuning', 'model': provider.model, 'index': identity['index']}) as run:
                 started = time.perf_counter()
                 with trace_span('Retrieve and select evidence', inputs={'question': question}) as retrieval_run:
                     retrieved = retriever.retrieve(question)
@@ -270,14 +283,22 @@ async def run(args):
                                not c.get('reference', '').strip() or
                                not c.get('reference_provenance', {}).get('review_notes', '').strip() for c in cases):
         raise ValueError('Feedback evaluation requires approved references and review notes')
-    key = os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')
+    provider_name = getattr(args, 'provider', 'groq')
+    key = os.getenv('TOKENHARBOR_API_KEY') if provider_name == 'tokenharbor' else os.getenv('GROQ_API_KEY') or os.getenv('GROK_API_KEY')
+    base_url = os.getenv('TOKENHARBOR_BASE_URL', 'https://tokenharbor.ai/v1') if provider_name == 'tokenharbor' else 'https://api.groq.com/openai/v1'
+    judge_model = args.judge or (os.getenv('TOKENHARBOR_MODEL') if provider_name == 'tokenharbor' else 'openai/gpt-oss-120b')
+    output_limit = 3000 if provider_name == 'tokenharbor' else 2048
+    ledger = None
+    if os.getenv('EVAL_BUDGET_FILE') and provider_name == 'tokenharbor':
+        from scripts.eval_budget import EvaluationBudget
+        ledger = EvaluationBudget(os.environ['EVAL_BUDGET_FILE'])
     if not key and args.max_requests:
-        raise ValueError('Groq key missing')
+        raise ValueError('Judge provider key missing')
     retriever = Retriever() if 'answer_relevancy' in args.metrics else None
     budget = RequestBudget(args.max_requests)
-    settings = {'provider': 'groq', 'judge': args.judge, 'temperature': 0, 'reasoning_effort': 'low',
+    settings = {'thinking': 'disabled' if provider_name == 'tokenharbor' else None, 'provider': provider_name, 'judge': judge_model, 'temperature': 0, 'reasoning_effort': 'low' if provider_name == 'groq' else None,
                 'transport': {'sdk_max_retries': 3, 'retry_after_buffer_seconds': 2, 'minimum_retry_seconds': 5},
-                'max_tokens': 2048, 'strictness': 3, 'timeout_per_metric': args.timeout,
+                'max_tokens': output_limit, 'strictness': 3, 'timeout_per_metric': args.timeout,
                 'packages': {p: importlib.metadata.version(p) for p in
                     (('ragas', 'openai', 'instructor', 'langchain-community') +
                      (('sentence-transformers', 'torch', 'transformers', 'torchvision') if retriever else ()))},
@@ -290,6 +311,13 @@ async def run(args):
 
     async def request_hook(request):
         budget.consume()  # Includes SDK retries; blocks before any request is sent.
+        if ledger:
+            from scripts.eval_budget import BudgetLimitError
+            try:
+                request.extensions['budget_ticket'] = ledger.begin(json.loads(request.content))
+            except BudgetLimitError:
+                budget.exhausted = True
+                raise BudgetExceeded('Evaluation dollar budget reached') from None
         request.extensions['eval_started'] = time.perf_counter()
         request.extensions['eval_call_index'] = len(http_calls)
         http_calls.append({'status': None, 'usage': {}, 'seconds': None})
@@ -303,19 +331,22 @@ async def run(args):
         http_calls[response.request.extensions['eval_call_index']].update(
             {'status': response.status_code, 'usage': usage,
              'seconds': time.perf_counter() - response.request.extensions['eval_started']})
+        if ledger:
+            ledger.finish(response.request.extensions['budget_ticket'], usage, response.status_code)
         if response.status_code == 429:
             delay = retry_delay(response.headers)
             http_calls[response.request.extensions['eval_call_index']]['retry_after_seconds'] = delay
             if delay >= args.timeout:
                 budget.exhausted = True
                 raise BudgetExceeded('Provider quota reset exceeds metric deadline')
-            print(f'  Groq quota: waiting about {delay:g}s before retry', flush=True)
+            print(f'  Judge quota: waiting about {delay:g}s before retry', flush=True)
             await asyncio.sleep(delay)
             response.headers['retry-after'] = '0'
 
-    client = AsyncOpenAI(api_key=key or 'cache-only-no-key', base_url='https://api.groq.com/openai/v1', timeout=60, max_retries=3,
+    client = AsyncOpenAI(api_key=key or 'cache-only-no-key', base_url=base_url, timeout=60, max_retries=3,
         http_client=httpx.AsyncClient(event_hooks={'request': [request_hook], 'response': [response_hook]}))
-    backend = llm_factory(args.judge, client=client, temperature=0, max_tokens=2048, reasoning_effort='low')
+    backend_options = {'reasoning_effort': 'low'} if provider_name == 'groq' else {'extra_body': {'thinking': {'type': 'disabled'}}}
+    backend = llm_factory(judge_model, client=client, temperature=0, max_tokens=output_limit, **backend_options)
 
     class CachedJudge(InstructorBaseRagasLLM):
         def __init__(self, draws_per_prompt=1):
@@ -391,7 +422,8 @@ def main():
     r.add_argument('--limit', type=int, default=3)
     r.add_argument('--max-requests', type=int, default=12, help='Maximum HTTP attempts including retries; 0 is cache-only')
     r.add_argument('--cache', type=Path, default=ROOT / 'data/ragas/judge_cache')
-    r.add_argument('--judge', default='openai/gpt-oss-120b')
+    r.add_argument('--provider', choices=['groq', 'tokenharbor'], default=os.getenv('RAG_LLM_PROVIDER', 'groq'))
+    r.add_argument('--judge')
     r.add_argument('--timeout', type=float, default=300)
     args = parser.parse_args()
     if args.command == 'collect':
