@@ -23,9 +23,11 @@ def test_nested_spans_keep_parent_and_outputs(monkeypatch):
     monkeypatch.setenv("LANGSMITH_API_KEY", "test")
     monkeypatch.setenv("LANGSMITH_TRACING", "true")
     monkeypatch.setattr(tracing, "get_client", lambda: client)
-    with tracing.trace_span("question", inputs={"question": "Example?"}) as root:
+    with tracing.trace_span("question", inputs={"question": "Example?"}, metadata={"thread_id": "session-test"}, project_name="techqa-evaluations") as root:
         with tracing.trace_span("retrieval", inputs={"question": "Example?"}) as child:
+            assert root.session_name == child.session_name == "techqa-evaluations"
             assert child.parent_run_id == root.id
+            assert child.extra["metadata"]["thread_id"] == "session-test"
             child.end(outputs={"candidate_count": 100})
         root.end(outputs={"status": "answered"})
     assert create_run.call_count == 2
@@ -74,4 +76,18 @@ def test_provider_trace_records_actual_token_usage(monkeypatch):
         "input_tokens": 10,
         "output_tokens": 2,
         "total_tokens": 12,
+        "input_token_details": {"cache_read": 0},
     }
+
+
+def test_free_route_usage_has_explicit_cost_and_cache_details():
+    from rag_app.tracing import model_usage, evaluation_thread
+    usage = model_usage([{'prompt_tokens': 10, 'completion_tokens': 5,
+                          'prompt_tokens_details': {'cached_tokens': 4},
+                          'completion_tokens_details': {'reasoning_tokens': 2}}],
+                         provider='tokenharbor', model='deepseek-v4.1-flash:free')
+    assert usage['total_cost'] == 0
+    assert usage['input_token_details']['cache_read'] == 4
+    assert usage['output_token_details']['reasoning'] == 2
+    assert 'total_cost' not in model_usage([{}], provider='other', model='unknown')
+    assert evaluation_thread({'question_id': 'Q1', 'langsmith_run_id': 'id'}) == 'TechQA / pipeline / Q1 / id'

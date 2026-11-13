@@ -116,6 +116,32 @@ Set `EVAL_BUDGET_FILE` to a shared ledger path to enforce the $0.50 token-value 
 
 Style rubrics and broad toxicity/PII/jailbreak evaluation are also planned. Existing origin/session, withholding and generated-component checks cover specific application contracts; they are not a comprehensive safety benchmark. Optional semantic metrics compare against available references, which may omit valid alternative answers.
 
+### Reasoning comparison after trace verification
+
+The [structured recheck](evaluations/results/layered_audit_10.json) evaluates saved generations from the same ten training questions. Evidence, prompts and the 6,000-token output cap were held fixed. Both arms use the same reasoning-disabled judge. The clean pass reused **422 judgments** and made **19 new judge requests**, with zero judge errors.
+
+| Measure | Reasoning off | Reasoning on |
+|---|---:|---:|
+| Released answers / 10 | 7 | 6 |
+| Generation errors / 10 | 0 | 3 |
+| Median recorded generation time | 8.73 s | 19.13 s |
+| Reported generation tokens | 107,269 | 143,141 |
+| Reference F1, five shared released answers | 33.6% | 50.2% |
+| Faithfulness, same five answers | 100.0% | 97.1% |
+
+Reasoning stays disabled under the current output cap. All three reasoning-on errors were truncations. The five-case reference improvement requires a larger independent sample before a broader quality claim. Generation timings come from the saved executions. Replay spans report evaluation time and retain original generation durations in their outputs. The provider did not report reasoning-token counts.
+
+The recheck has **24 question chains, 23 threads and 136 metric verdicts**, with zero missing verdict outputs, thread IDs or reported LLM costs. The two workflow turns share a thread. All **144 metric status cells** are present, including eight metrics outside the component/workflow scoring scope. Reference-score review continues around answer scope, version conditions and bundled claims. The combined audit/comparison ledger reached **$0.392/$0.50** of standard-route token value, with one unresolved reservation. The selected free route records zero billed cost.
+
+### Reading evaluation traces
+
+- Each question opens as one chain. Expand the saved pipeline stages, then each RAGAS metric and its judge steps. Conversation turns share a thread ID. Imported child timestamps have zero duration; their outputs retain the original measured duration.
+- Each metric reports its score and status. The categorical `ragas_status_*` fields show success, skipped, not run, error, budget exhausted, undefined or needs review. A missing score stays empty. A zero score records a completed judgment with a zero result.
+- Context precision judges each passage, so seven passages can require seven judge calls. Faithfulness uses statement extraction and checking. Relevancy uses three generated questions. Reference F1 uses claim extraction and checking in both directions. Cached judgments report zero HTTP calls.
+- The TokenHarbor free route reports explicit `$0.00` billed cost. The shared budget ledger separately tracks standard-route token value. Unknown prices stay unknown. Cache and available reasoning-token counts are recorded.
+- Completed traces rejected further updates in the current backend. Earlier flat imports remain archived. Replacement imports preserve saved answers and scores, with complete verdicts and parent/child links created together.
+- Set `RAG_THINKING=disabled` for the current serving configuration. Use `enabled` only in a separately labeled fixed-evidence comparison. Generation mode is part of the answer-cache identity. The judge stays fixed while generation reasoning changes.
+
 ### Bounded generation comparison with prompt version 6
 
 The [saved comparison](evaluations/results/generation_v6.json) keeps the same 30 questions, references and source passages. The updated flow uses one writer, code-only display of valid writer-selected citation IDs and one verifier. A failed factual check withholds the answer. Code formatted citations in **21/30** cases, so prompt changes alone did not solve citation output.

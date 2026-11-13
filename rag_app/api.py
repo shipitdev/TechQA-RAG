@@ -227,7 +227,8 @@ def create_app(retriever=None, generator=None, resolver=None, provider=None):
                             'index': retrieve.index_identity() if hasattr(retrieve, 'index_identity') else 'injected_test_index',
                             'model': provider.model if provider else MODEL,
                             'prompt': PROMPT_VERSION, 'generation': {'provider': provider.provider if provider else 'injected',
-                            'max_output_tokens': provider.max_tokens if provider else 1500}}
+                            'max_output_tokens': provider.max_tokens if provider else 1500,
+                            'thinking': getattr(provider, 'thinking', None)}}
                 cached = None if regen or result else answers.get(session.id, identity, session_expires_at=session.expires_at)
                 if cached:
                     result = dict(cached)
@@ -356,7 +357,7 @@ def create_app(retriever=None, generator=None, resolver=None, provider=None):
                 emit('done', {})
 
         def worker():
-            with trace_span('Pipeline / Question', inputs={'question': body.question, 'regenerate': body.regenerate}, run_id=uuid.UUID(rid), metadata={'model': os.getenv('TOKENHARBOR_MODEL', MODEL) if os.getenv('RAG_LLM_PROVIDER') == 'tokenharbor' else MODEL, 'prompt_version': PROMPT_VERSION, 'pipeline_sha256': pipeline_version()}) as run:
+            with trace_span('Pipeline / Question', inputs={'question': body.question, 'regenerate': body.regenerate}, run_id=uuid.UUID(rid), metadata={'model': os.getenv('TOKENHARBOR_MODEL', MODEL) if os.getenv('RAG_LLM_PROVIDER') == 'tokenharbor' else MODEL, 'prompt_version': PROMPT_VERSION, 'pipeline_sha256': pipeline_version(), 'thread_id': 'TechQA / session / ' + hashlib.sha256(session.id.encode()).hexdigest()[:24]}) as run:
                 run_worker()
                 if run and not run.outputs:
                     run.end(outputs={'status': 'cancelled_or_timed_out'})

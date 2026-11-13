@@ -612,5 +612,320 @@
   "provenance": {
     "scorer_sha256": "4024b7d7422acb2e166f5cf366476e29df778d6a0845425510fe4cc18f9ae00d",
     "pipeline_manifest_sha256": "4c69828bb542728f0915e4ead1a88319bc8b445ce9b5e05199c8782a7ba63883"
+  },
+  "structured_recheck": {
+    "run_date": "2026-11-11",
+    "scope": "Fixed ten training-tuning questions, identical saved evidence and 6000-token generation output cap. Reasoning-on uses provider default effort. The clean evaluation reused saved generations and valid cached judgments after tracing verification.",
+    "judge": "deepseek-v4.1-flash:free, thinking disabled in both arms",
+    "limitations": [
+      "Small training sample",
+      "Same model family writes and judges",
+      "Reasoning token breakdown unavailable from provider",
+      "Latency is observational and includes failures",
+      "Three reasoning-on truncations limit the comparison; conclusions apply to the current output cap",
+      "Saved-generation replay spans retain recorded durations separately from evaluation latency"
+    ],
+    "layers": {
+      "off": {
+        "attempted": 10,
+        "outcomes": {
+          "answered": 7,
+          "insufficient_evidence": 2,
+          "needs_clarification": 1
+        },
+        "metrics": {
+          "context_precision": {
+            "success": 10,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 0.8385714285112444
+          },
+          "context_recall": {
+            "success": 10,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 1.0
+          },
+          "faithfulness": {
+            "success": 7,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 3,
+            "budget_exhausted": 0,
+            "mean": 0.9659863945578231
+          },
+          "answer_relevancy": {
+            "success": 7,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 3,
+            "budget_exhausted": 0,
+            "mean": 0.8849442137920638
+          },
+          "factual_correctness": {
+            "success": 7,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 3,
+            "budget_exhausted": 0,
+            "mean": 0.40857142857142853
+          },
+          "answer_completeness": {
+            "success": 7,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 3,
+            "budget_exhausted": 0,
+            "mean": 0.7857142857142857
+          }
+        }
+      },
+      "on": {
+        "attempted": 10,
+        "outcomes": {
+          "generation_error": 3,
+          "answered": 6,
+          "insufficient_evidence": 1
+        },
+        "metrics": {
+          "context_precision": {
+            "success": 10,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 0.8385714285112444
+          },
+          "context_recall": {
+            "success": 10,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 1.0
+          },
+          "faithfulness": {
+            "success": 6,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 4,
+            "budget_exhausted": 0,
+            "mean": 0.9761904761904762
+          },
+          "answer_relevancy": {
+            "success": 6,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 4,
+            "budget_exhausted": 0,
+            "mean": 0.9125643521285411
+          },
+          "factual_correctness": {
+            "success": 6,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 4,
+            "budget_exhausted": 0,
+            "mean": 0.4183333333333334
+          },
+          "answer_completeness": {
+            "success": 6,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 4,
+            "budget_exhausted": 0,
+            "mean": 0.75
+          }
+        }
+      },
+      "component": {
+        "attempted": 2,
+        "outcomes": {
+          "answered": 2
+        },
+        "metrics": {
+          "faithfulness": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 1.0
+          },
+          "answer_relevancy": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 0.8169765529503135
+          },
+          "factual_correctness": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 0.25
+          },
+          "answer_completeness": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 1.0
+          }
+        }
+      },
+      "workflow": {
+        "attempted": 2,
+        "outcomes": {
+          "answered": 2
+        },
+        "metrics": {
+          "faithfulness": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 1.0
+          },
+          "answer_relevancy": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 0.9418714459143624
+          },
+          "factual_correctness": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 0.7350000000000001
+          },
+          "answer_completeness": {
+            "success": 2,
+            "error": 0,
+            "undefined": 0,
+            "skipped": 0,
+            "budget_exhausted": 0,
+            "mean": 1.0
+          }
+        }
+      }
+    },
+    "generation_operations": {
+      "off": {
+        "cases": 10,
+        "median_generation_seconds": 8.726474104500312,
+        "reported_generation_tokens": 107269,
+        "generation_errors": {}
+      },
+      "on": {
+        "cases": 10,
+        "median_generation_seconds": 19.133343312500074,
+        "reported_generation_tokens": 143141,
+        "generation_errors": {
+          "output_truncated": 3
+        }
+      }
+    },
+    "paired_released_cases": {
+      "count": 5,
+      "question_ids": [
+        "TRAIN_Q425",
+        "TRAIN_Q376",
+        "TRAIN_Q013",
+        "TRAIN_Q361",
+        "TRAIN_Q310"
+      ],
+      "metrics": {
+        "faithfulness": {
+          "off": 1.0,
+          "on": 0.9714285714285714
+        },
+        "answer_relevancy": {
+          "off": 0.9069352095509547,
+          "on": 0.9002108346996028
+        },
+        "factual_correctness": {
+          "off": 0.33599999999999997,
+          "on": 0.502
+        },
+        "answer_completeness": {
+          "off": 0.7,
+          "on": 0.9
+        }
+      }
+    },
+    "observability": {
+      "off": {
+        "roots": 10,
+        "threads": 10,
+        "metric_verdicts": 60,
+        "missing_outputs": 0,
+        "missing_threads": 0,
+        "llm_spans": 0,
+        "missing_costs": 0,
+        "status_cells": 60,
+        "billed_cost": 0
+      },
+      "on": {
+        "roots": 10,
+        "threads": 10,
+        "metric_verdicts": 60,
+        "missing_outputs": 0,
+        "missing_threads": 0,
+        "llm_spans": 19,
+        "missing_costs": 0,
+        "status_cells": 60,
+        "billed_cost": 0.0
+      },
+      "component": {
+        "roots": 2,
+        "threads": 2,
+        "metric_verdicts": 8,
+        "missing_outputs": 0,
+        "missing_threads": 0,
+        "llm_spans": 0,
+        "missing_costs": 0,
+        "status_cells": 12,
+        "billed_cost": 0
+      },
+      "workflow": {
+        "roots": 2,
+        "threads": 1,
+        "metric_verdicts": 8,
+        "missing_outputs": 0,
+        "missing_threads": 0,
+        "llm_spans": 0,
+        "missing_costs": 0,
+        "status_cells": 12,
+        "billed_cost": 0
+      }
+    },
+    "execution": {
+      "judge_cache_hits": 422,
+      "judge_cache_misses": 19,
+      "http_attempts": 19,
+      "embedding_cache": {
+        "query_cache_hits": 61,
+        "query_cache_misses": 7
+      },
+      "standard_route_value_usd_including_prior_audit": 0.39192151199999997,
+      "budget_usd": 0.5,
+      "unresolved_reservations": 1,
+      "free_route_billed_cost_usd": 0
+    },
+    "decision": "Keep reasoning disabled under the current output cap. Review answer scope and reference/judge alignment before another generation change."
   }
 }

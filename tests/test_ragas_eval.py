@@ -299,3 +299,24 @@ def test_component_collector_supplies_gold_article_instead_of_search_context(tmp
     layers.collect_components(pipeline, output, [c['question_id']])
     assert seen[0][0]['text'] == 'GOLD_ARTICLE'
     assert json.loads((output / (c['question_id'] + '.json')).read_text())['evaluation_layer'] == 'component'
+
+
+def test_metric_trace_always_contains_verdict_including_skips(monkeypatch):
+    from contextlib import contextmanager
+    from unittest.mock import Mock
+    import rag_app.tracing as tracing
+    spans = []
+    @contextmanager
+    def capture(name, **kwargs):
+        run = Mock()
+        spans.append((name, kwargs, run))
+        yield run
+    monkeypatch.setattr(tracing, 'trace_span', capture)
+    c = case()
+    c['status'] = 'insufficient_evidence'
+    asyncio.run(evaluate_case(c, {'faithfulness': Mock()}))
+    metric = spans[1][2].end.call_args.kwargs['outputs']
+    assert metric['state'] == 'skipped'
+    assert metric['reason'] == 'no_context_or_no_released_answer'
+    assert metric['http_attempts'] == 0
+    assert spans[0][2].end.call_args.kwargs['outputs']['metrics']['faithfulness']['state'] == 'skipped'

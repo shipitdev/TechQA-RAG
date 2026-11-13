@@ -34,6 +34,7 @@ def test_saved_experiment_imports_measurements_before_run_creation(tmp_path):
     assert root['outputs']['model_calls'] == [{'provider': 'tokenharbor', 'model': 'deepseek-v4.1-flash:free'}]
     assert client.evaluate.call_count == 0
     assert client.update_run.call_count == 0
+    assert len([c for c in client.create_feedback.call_args_list if c.kwargs.get('key', '').startswith('ragas_status_')]) == len(payload['cases']) * 6
     assert any(c.kwargs.get('key') == 'pipeline_error' and c.kwargs.get('score') == 1
                for c in client.create_feedback.call_args_list)
 
@@ -76,3 +77,22 @@ def test_custom_dataset_rejects_changed_reference():
     client.list_examples.return_value[0].outputs['reference'] = 'Different reference'
     with pytest.raises(ValueError, match='question/reference differs'):
         publish(Path('evaluations/fixtures/offline_demo.json'), client, dataset_name='existing')
+
+
+def test_imported_metric_children_include_verdict_cost_and_thread():
+    from datetime import datetime, timezone
+    from scripts.publish_langsmith import publish_ragas_children
+    root = Mock()
+    case = {'question_id': 'Q1', 'langsmith_run_id': 'source'}
+    metrics = {'factual_correctness': {'state': 'success', 'score': 0.0, 'seconds': 1,
+        'judge_calls': [{'cache_hit': False, 'key': 'k', 'decision': {'verdict': 0},
+                         'http_calls': [{'usage': {'prompt_tokens': 10, 'completion_tokens': 2}}]}]}}
+    publish_ragas_children(root, case, metrics,
+                           {'provider': 'tokenharbor', 'judge': 'deepseek-v4.1-flash:free'},
+                           datetime.now(timezone.utc))
+    metric = root.create_child.call_args.kwargs
+    assert metric['outputs']['score'] == 0.0
+    assert metric['outputs']['http_attempts'] == 1
+    judge = root.create_child.return_value.create_child.call_args.kwargs
+    assert judge['outputs']['usage_metadata']['total_cost'] == 0.0
+    assert judge['extra']['metadata']['thread_id'] == metric['extra']['metadata']['thread_id']

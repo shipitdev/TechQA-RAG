@@ -1,5 +1,6 @@
 """Collect supplied-evidence component cases and real API workflow cases for RAGAS."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,7 +12,7 @@ from fastapi.testclient import TestClient
 from rag_app.api import create_app
 from rag_app.generation import AnswerGenerator, ConversationResolver, GenerationError, configured_provider
 from rag_app.retriever import Retriever
-from rag_app.tracing import trace_span
+from rag_app.tracing import trace_span, evaluation_thread
 from scripts.audit_techqa import RAW, ROOT
 from scripts.eval_ragas import save
 from scripts.eval_suite import load_cases
@@ -37,6 +38,7 @@ def collect_components(pipeline, output, question_ids):
     provider = configured_provider()
     for qid in question_ids:
         case = dict(cases[qid])
+        case.pop('thread_id', None)
         doc = case['reference_provenance']['document_id']
         evidence = [{'id': 'S1', 'document_id': doc, 'text': documents[doc]['text']}]
         provider.usage.clear()
@@ -44,7 +46,9 @@ def collect_components(pipeline, output, question_ids):
         generator = AnswerGenerator(provider.json_call)
         started = time.perf_counter()
         with trace_span('Component / Generator / ' + qid, inputs={'question': case['user_input']},
-                        metadata={'evidence_mode': 'annotated_original_article'}) as run:
+                        metadata={'evidence_mode': 'annotated_original_article', 'question_id': qid}) as run:
+            if run:
+                run.add_metadata({'thread_id': f'TechQA / component / {qid} / {run.id}'})
             try:
                 answer = generator.generate(case['user_input'], evidence)
             except GenerationError as exc:
@@ -57,6 +61,7 @@ def collect_components(pipeline, output, question_ids):
                                     'error_type': answer.get('error_type')})
             if run:
                 run.end(outputs={'status': case['status'], 'response': case['response']})
+        case['thread_id'] = evaluation_thread(case)
         save(output / (qid + '.json'), case)
     save(output / 'manifest.json', {**manifest, 'question_ids': question_ids,
          'evaluation_layer': 'component', 'scope': 'generator with supplied original annotated article'})
@@ -80,13 +85,18 @@ def collect_workflow(pipeline, output, root_id, followup):
                 started = time.perf_counter()
                 with trace_span('Workflow / ' + qid, inputs={'question': question}) as run:
                     result = stream_result(client.post('/ask', json={'question': question}))
+                    session_id = client.cookies.get('techqa_session')
+                    thread_id = ('TechQA / session / ' + hashlib.sha256(session_id.encode()).hexdigest()[:24]
+                                 if session_id else f'TechQA / workflow / {root_id}')
+                    if run:
+                        run.add_metadata({'thread_id': thread_id})
                     if root_status is None:
                         root_status = result['status']
                     sources = result.get('sources', [])
                     case = {**base, 'question_id': qid, 'user_input': question,
                             'status': result['status'], 'response': result['answer'], 'citations': result['citations'],
                             'sources': sources, 'retrieved_contexts': [json.dumps(s, ensure_ascii=False) for s in sources],
-                            'evaluation_layer': 'workflow', 'langsmith_run_id': str(run.id) if run else None,
+                            'evaluation_layer': 'workflow', 'langsmith_run_id': str(run.id) if run else None, 'thread_id': thread_id,
                             'generation': {'seconds': time.perf_counter() - started, 'trace': list(generator.trace),
                                 'provider_calls': result['metrics'].get('provider_calls', []),
                                 'http_attempts': result['metrics'].get('http_attempts', []),
